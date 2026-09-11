@@ -1,0 +1,130 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\Users\\joshu\\source\\repos\\MedicionPQ\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{72BFEAE2-3375-230F-FE53-2281ADF4E560}|MedicionPQ.csproj|d:\\users\\joshu\\source\\repos\\medicionpq\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{72BFEAE2-3375-230F-FE53-2281ADF4E560}|MedicionPQ.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{72BFEAE2-3375-230F-FE53-2281ADF4E560}|MedicionPQ.csproj|d:\\users\\joshu\\source\\repos\\medicionpq\\data\\appdbcontex.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{72BFEAE2-3375-230F-FE53-2281ADF4E560}|MedicionPQ.csproj|solutionrelative:data\\appdbcontex.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{72BFEAE2-3375-230F-FE53-2281ADF4E560}|MedicionPQ.csproj|d:\\users\\joshu\\source\\repos\\medicionpq\\modelos\\usuario.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{72BFEAE2-3375-230F-FE53-2281ADF4E560}|MedicionPQ.csproj|solutionrelative:modelos\\usuario.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{72BFEAE2-3375-230F-FE53-2281ADF4E560}|MedicionPQ.csproj|d:\\users\\joshu\\source\\repos\\medicionpq\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{72BFEAE2-3375-230F-FE53-2281ADF4E560}|MedicionPQ.csproj|solutionrelative:controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{72BFEAE2-3375-230F-FE53-2281ADF4E560}|MedicionPQ.csproj|d:\\users\\joshu\\source\\repos\\medicionpq\\modelos\\loginrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{72BFEAE2-3375-230F-FE53-2281ADF4E560}|MedicionPQ.csproj|solutionrelative:modelos\\loginrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{72BFEAE2-3375-230F-FE53-2281ADF4E560}|MedicionPQ.csproj|d:\\users\\joshu\\source\\repos\\medicionpq\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{72BFEAE2-3375-230F-FE53-2281ADF4E560}|MedicionPQ.csproj|solutionrelative:appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 7,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "D:\\Users\\joshu\\source\\repos\\MedicionPQ\\appsettings.json",
+              "RelativeDocumentMoniker": "appsettings.json",
+              "ToolTip": "D:\\Users\\joshu\\source\\repos\\MedicionPQ\\appsettings.json",
+              "RelativeToolTip": "appsettings.json",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAAAIAAACDAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-09-11T21:49:05.861Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "AppDBContex.cs",
+              "DocumentMoniker": "D:\\Users\\joshu\\source\\repos\\MedicionPQ\\Data\\AppDBContex.cs",
+              "RelativeDocumentMoniker": "Data\\AppDBContex.cs",
+              "ToolTip": "D:\\Users\\joshu\\source\\repos\\MedicionPQ\\Data\\AppDBContex.cs",
+              "RelativeToolTip": "Data\\AppDBContex.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAEAAAAZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-11T16:32:49.991Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Usuario.cs",
+              "DocumentMoniker": "D:\\Users\\joshu\\source\\repos\\MedicionPQ\\Modelos\\Usuario.cs",
+              "RelativeDocumentMoniker": "Modelos\\Usuario.cs",
+              "ToolTip": "D:\\Users\\joshu\\source\\repos\\MedicionPQ\\Modelos\\Usuario.cs",
+              "RelativeToolTip": "Modelos\\Usuario.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-10T22:01:29.237Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "AuthController.cs",
+              "DocumentMoniker": "D:\\Users\\joshu\\source\\repos\\MedicionPQ\\Controllers\\AuthController.cs",
+              "RelativeDocumentMoniker": "Controllers\\AuthController.cs",
+              "ToolTip": "D:\\Users\\joshu\\source\\repos\\MedicionPQ\\Controllers\\AuthController.cs",
+              "RelativeToolTip": "Controllers\\AuthController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABsAAAAPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-08T20:13:57.584Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "LoginRequest.cs",
+              "DocumentMoniker": "D:\\Users\\joshu\\source\\repos\\MedicionPQ\\Modelos\\LoginRequest.cs",
+              "RelativeDocumentMoniker": "Modelos\\LoginRequest.cs",
+              "ToolTip": "D:\\Users\\joshu\\source\\repos\\MedicionPQ\\Modelos\\LoginRequest.cs",
+              "RelativeToolTip": "Modelos\\LoginRequest.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-08T20:07:05.467Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\Users\\joshu\\source\\repos\\MedicionPQ\\Program.cs",
+              "RelativeDocumentMoniker": "Program.cs",
+              "ToolTip": "D:\\Users\\joshu\\source\\repos\\MedicionPQ\\Program.cs",
+              "RelativeToolTip": "Program.cs",
+              "ViewState": "AgIAABgAAAAAAAAAAAAAACUAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-08T18:29:14.81Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

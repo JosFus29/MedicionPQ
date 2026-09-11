@@ -1,0 +1,6 @@
+@MedicionPQ_HostAddress = http://localhost:5201
+
+GET {{MedicionPQ_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
