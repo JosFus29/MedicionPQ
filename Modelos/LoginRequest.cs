@@ -1,8 +1,6 @@
-﻿namespace MedicionPQ.Modelos
+﻿namespace MedicionPQ.Modelos;
+public class LoginRequest
 {
-    public class LoginRequest
-    {
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-    }
+    public string Cuenta { get; set; } = string.Empty;
+    public string Clave { get; set; } = string.Empty;
 }

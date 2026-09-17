@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using MedicionPQ.Data;
 
 var builder = WebApplication.CreateBuilder(args);
