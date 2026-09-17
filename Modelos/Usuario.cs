@@ -6,7 +6,7 @@ namespace MedicionPQ.Modelos;
 public class Usuario
 {
     public int id { get; set; }
-    public string CUENTA { get; set; } = string.Empty;
-    public string CLAVE { get; set; } = string.Empty;
-    public string ROL { get; set; } = string.Empty;
+    public string? CUENTA { get; set; }
+    public string? CLAVE { get; set; }
+    public byte? ROL { get; set; }
 }
