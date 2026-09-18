@@ -22,29 +22,33 @@ public class AuthController : ControllerBase
     public IActionResult Login([FromBody] LoginRequest request)
     {
         //validamos que no vengan vacios los campos
-        if (string.IsNullOrEmpty(request.Cuenta) || string.IsNullOrEmpty(request.Clave))
+        if (string.IsNullOrEmpty(request.Correo) || string.IsNullOrEmpty(request.Contrasena))
         {
-            return BadRequest(new { message = "Cuenta y Clave son requeridos" });
+            return BadRequest(new { message = "Correo y Contraseña son requeridos" });
         }
 
         // buscamos en la tabla de usuarios si existe el usuario con la cuenta y clave proporcionados
-        var usuarioEnDb = _context.Usuarios.FirstOrDefault(u => u.CUENTA == request.Cuenta && u.CLAVE == request.Clave);
+        var usuarioEnDb = _context.Usuarios.FirstOrDefault(u => u.correo == request.Correo && u.contrasena == request.Contrasena);
 
-        //si se encuentra el usuario y la clave es correcta, retornamos un mensaje de éxito
+        //si se encuentra el correo y la contraseña es correcta, retornamos un mensaje de éxito
         if (usuarioEnDb != null)
         {
+            if (!usuarioEnDb.edo)
+            {
+                return Unauthorized(new { message = "Usuario inactivo" });
+            }
+
             return Ok(new { 
                 
                 message = "Inicio de sesión exitoso", 
-                usuario = usuarioEnDb.id,
-                cuenta = usuarioEnDb.CUENTA,
-                rol = usuarioEnDb.ROL
+                usuario = usuarioEnDb.idUsuario,
+                correo = usuarioEnDb.correo
             });
         }
         else
         {
             //si no se encuentra el usuario o la clave es incorrecta, retornamos un mensaje de error
-            return Unauthorized(new { message = "Cuenta o Clave incorrectos" });
+            return Unauthorized(new { message = "Correo o Contraseña incorrectos" });
         }
     }
 }
