@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using MedicionPQ.Modelos;
 using MedicionPQ.Data;
-using Microsoft.AspNetCore.HttpLogging;
+using MedicionPQ.Services;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace MedicionPQ.Controllers;
 
@@ -10,13 +12,15 @@ namespace MedicionPQ.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AppDBContex _context;
+    private readonly TokenService _tokenService;
 
-    // Inyectamos el contexto de la base de datos a través del constructor
-    public AuthController(AppDBContex context)
+    // Inyectamos el contexto de la base de datos y el servicio de tokens a través del constructor
+    public AuthController(AppDBContex context, TokenService tokenService)
     {
         _context = context;
+        _tokenService = tokenService;
     }
-    
+
 
     [HttpPost("login")]
     public IActionResult Login([FromBody] LoginRequest request)
@@ -30,7 +34,7 @@ public class AuthController : ControllerBase
         // buscamos en la tabla de usuarios si existe el usuario con la cuenta y clave proporcionados
         var usuarioEnDb = _context.Usuarios.FirstOrDefault(u => u.correo == request.Correo && u.contrasena == request.Contrasena);
 
-        //si se encuentra el correo y la contraseña es correcta, retornamos un mensaje de éxito
+        //si se encuentra el correo y la contraseña es correcta, generamos el token y retornamos éxito
         if (usuarioEnDb != null)
         {
             if (!usuarioEnDb.edo)
@@ -38,11 +42,14 @@ public class AuthController : ControllerBase
                 return Unauthorized(new { message = "Usuario inactivo" });
             }
 
-            return Ok(new { 
-                
-                message = "Inicio de sesión exitoso", 
+            var token = _tokenService.GenerarToken(usuarioEnDb);
+
+            return Ok(new {
+                message = "Inicio de sesión exitoso",
                 usuario = usuarioEnDb.idUsuario,
-                correo = usuarioEnDb.correo
+                correo = usuarioEnDb.correo,
+                token = token,
+                expiraEn = usuarioEnDb.tiempoSesion + " minutos"
             });
         }
         else
@@ -50,5 +57,20 @@ public class AuthController : ControllerBase
             //si no se encuentra el usuario o la clave es incorrecta, retornamos un mensaje de error
             return Unauthorized(new { message = "Correo o Contraseña incorrectos" });
         }
+    }
+
+    [Authorize]
+    [HttpGet("perfil")]
+    public IActionResult Perfil()
+    {
+        var idUsuario = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var correo = User.FindFirst(ClaimTypes.Email)?.Value;
+
+        return Ok(new
+        {
+            message = "Token válido, acceso autorizado",
+            idUsuario,
+            correo
+        });
     }
 }
