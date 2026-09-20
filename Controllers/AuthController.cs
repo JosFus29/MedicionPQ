@@ -28,7 +28,8 @@ public class AuthController : ControllerBase
         }
 
         // buscamos en la tabla de usuarios si existe el usuario con la cuenta y clave proporcionados
-        var usuarioEnDb = _context.Usuarios.FirstOrDefault(u => u.correo == request.Correo && u.contrasena == request.Contrasena);
+        var usuarioEnDb = _context.Usuarios.
+            FirstOrDefault(u => u.correo == request.Correo && u.contrasena == request.Contrasena);
 
         //si se encuentra el correo y la contraseña es correcta, retornamos un mensaje de éxito
         if (usuarioEnDb != null)
@@ -42,7 +43,11 @@ public class AuthController : ControllerBase
                 
                 message = "Inicio de sesión exitoso", 
                 usuario = usuarioEnDb.idUsuario,
-                correo = usuarioEnDb.correo
+                correo = usuarioEnDb.correo,
+                nombreUsuario = usuarioEnDb.nombreUsuario,
+                //probamos que el rol se pueda enviar como string
+                rol = usuarioEnDb.rol.ToString()
+
             });
         }
         else
