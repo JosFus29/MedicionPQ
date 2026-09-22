@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+//se agrega para poder usar Key
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MedicionPQ.Modelos;
@@ -14,4 +15,14 @@ public class Usuario
 
     //el tipo 'bit' de SQL Server se mapea en 'bool' en C#
     public bool edo { get; set; }
+    public string nombreUsuario { get; set; } = string.Empty;
+    //se agrega para poder usar el enum TipoRol
+    public enum TipoRol : byte
+    {
+        Administrador = 1,
+        Usuario = 2
+    }
+    //se agrega para poder usar el enum TipoRol
+    [Column("rol")]
+    public TipoRol rol { get; set; }
 }
