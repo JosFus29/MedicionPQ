@@ -62,10 +62,11 @@ public class AuthController : ControllerBase
                 message = "Inicio de sesión exitoso",
                 usuario = usuarioEnDb.idUsuario,
                 correo = usuarioEnDb.correo,
+                //contrasena = usuarioEnDb.contrasena,
                 nombreUsuario = usuarioEnDb.nombreUsuario,
                 // Convertimos el rol a string para que el cliente web/móvil lo maneje más fácil
                 rol = usuarioEnDb.rol.ToString(),
-                token = token,
+                token,
                 expiraEn = usuarioEnDb.tiempoSesion + " minutos"
             });
         }
@@ -84,12 +85,18 @@ public class AuthController : ControllerBase
         // Extraemos los datos (Claims) que encriptamos dentro del token desde TokenService
         var idUsuario = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var correo = User.FindFirst(ClaimTypes.Email)?.Value;
+        //probamos que el claim personalizado nombreUsuario se pueda extraer correctamente
+        var nombreUsuario = User.FindFirst(ClaimTypes.Name)?.Value;
+        var rol = User.FindFirst(ClaimTypes.Role)?.Value;
 
         return Ok(new
         {
             message = "Token válido, acceso autorizado",
             idUsuario,
-            correo
+            correo,
+            nombreUsuario,
+            rol
+
         });
     }
 }

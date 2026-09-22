@@ -35,7 +35,10 @@ public class TokenService
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, usuario.idUsuario.ToString()),
-            new Claim(ClaimTypes.Email, usuario.correo)
+            new Claim(ClaimTypes.Email, usuario.correo),
+            new Claim(ClaimTypes.Name, usuario.nombreUsuario),
+            new Claim(ClaimTypes.Role, usuario.rol.ToString())
+            
         };
 
         // 2. Firma del Token (Signature)
@@ -49,7 +52,10 @@ public class TokenService
         var expira = DateTime.UtcNow.AddMinutes(usuario.tiempoSesion);
 
         // 4. Construcción del Token
-        // Ensambla todas las piezas necesarias: quién lo emite (Issuer), quién lo consume (Audience), los datos (Claims), expiración y la firma de seguridad.
+        // Ensambla todas las piezas necesarias: quién lo emite (Issuer), quién lo consume (Audience),
+        // los datos (Claims), expiración y la firma de seguridad.
+        // var identity = new ClaimsIdentity(claims);
+
         var token = new JwtSecurityToken(
             issuer: _config["Jwt:Issuer"],
             audience: _config["Jwt:Audience"],
