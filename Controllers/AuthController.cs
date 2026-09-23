@@ -1,102 +1,63 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore; // Requerido para operaciones asíncronas de la base de datos
 using MedicionPQ.Modelos;
-using MedicionPQ.Data;
 using MedicionPQ.Services;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 
 namespace MedicionPQ.Controllers;
 
 /// <summary>
-/// Controlador principal para gestionar el inicio de sesión y validación de usuarios.
+/// Controlador de autenticación (API).
+/// Responsabilidad: recibir peticiones HTTP, validar la entrada y delegar la lógica de negocio
+/// al servicio IAuthService / AuthService. No debe contener lógica de acceso a datos.
+/// Referencias:
+/// - Services/IAuthService.cs: contrato del servicio de autenticación.
+/// - Services/AuthService.cs: implementación que valida credenciales y genera token.
+/// - Services/TokenService.cs: generación del JWT.
 /// </summary>
 [ApiController]
-[Route("api/[controller]")] // La ruta final será: /api/Auth
+[Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly AppDBContex _context;
-    private readonly TokenService _tokenService;
+    private readonly IAuthService _authService;
 
-    /// <summary>
-    /// Inyección de dependencias: Recibe la conexión a BD y el servicio generador de tokens.
-    /// </summary>
-    public AuthController(AppDBContex context, TokenService tokenService)
+    public AuthController(IAuthService authService)
     {
-        _context = context;
-        _tokenService = tokenService;
+        _authService = authService;
     }
 
     /// <summary>
-    /// Recibe las credenciales, verifica en la BD y devuelve un JWT si son correctas.
+    /// Endpoint POST /api/Auth/login
+    /// Recibe correo y contraseña, valida mediante IAuthService y devuelve token y datos mínimos del usuario.
     /// </summary>
+    /// <param name="request">LoginRequest con Correo y Contrasena.</param>
+    /// <returns>LoginResponse con token y datos públicos del usuario.</returns>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        // 1. Validación inicial de la solicitud
         if (string.IsNullOrEmpty(request.Correo) || string.IsNullOrEmpty(request.Contrasena))
         {
-            return BadRequest(new { message = "Correo y Contraseña son requeridos" });
+            return BadRequest(new { mensaje = "El correo y la contraseña son obligatorios." });
         }
 
-        // 2. Consulta a la base de datos (Asíncrona para no bloquear el servidor)
-        // Busca un usuario donde coincidan exactamente el correo y la contraseña
-        var usuarioEnDb = await _context.Usuarios.
-            FirstOrDefaultAsync(u => u.correo == request.Correo && u.contrasena == request.Contrasena);
+        // Basic validation: email format and password length
+        var emailAttr = new EmailAddressAttribute();
+        if (!emailAttr.IsValid(request.Correo)) return BadRequest(new { mensaje = "Correo inválido." });
+        if (request.Contrasena.Length < 8) return BadRequest(new { mensaje = "La contraseña debe tener al menos 8 caracteres." });
 
-        // 3. Verificación de credenciales
-        if (usuarioEnDb != null)
+        var resultado = await _authService.ValidarLoginAsync(request.Correo, request.Contrasena);
+
+        if (!resultado.Exito)
         {
-            // Validamos que el usuario no haya sido dado de baja (edo = 1 en SQL Server significa activo)
-            if (!usuarioEnDb.edo)
-            {
-                return Unauthorized(new { message = "Usuario inactivo" });
-            }
-
-            // 4. Generación del JWT
-            var token = _tokenService.GenerarToken(usuarioEnDb);
-
-            // 5. Respuesta exitosa con el payload de datos útiles para el frontend
-            return Ok(new
-            {
-                message = "Inicio de sesión exitoso",
-                usuario = usuarioEnDb.idUsuario,
-                correo = usuarioEnDb.correo,
-                //contrasena = usuarioEnDb.contrasena,
-                nombreUsuario = usuarioEnDb.nombreUsuario,
-                // Convertimos el rol a string para que el cliente web/móvil lo maneje más fácil
-                rol = usuarioEnDb.rol.ToString(),
-                token,
-                expiraEn = usuarioEnDb.tiempoSesion + " minutos"
-            });
+            return Unauthorized(new { mensaje = resultado.Mensaje });
         }
 
-        // Si la BD devuelve null, las credenciales no existen o son incorrectas
-        return Unauthorized(new { message = "Correo o Contraseña incorrectos" });
-    }
-
-    /// <summary>
-    /// Endpoint protegido de prueba. Solo se puede acceder enviando un Token JWT válido.
-    /// </summary>
-    [Authorize] // Este atributo es el que exige el token en la cabecera HTTP
-    [HttpGet("perfil")]
-    public IActionResult Perfil()
-    {
-        // Extraemos los datos (Claims) que encriptamos dentro del token desde TokenService
-        var idUsuario = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var correo = User.FindFirst(ClaimTypes.Email)?.Value;
-        //probamos que el claim personalizado nombreUsuario se pueda extraer correctamente
-        var nombreUsuario = User.FindFirst(ClaimTypes.Name)?.Value;
-        var rol = User.FindFirst(ClaimTypes.Role)?.Value;
-
-        return Ok(new
+        var response = new LoginResponse
         {
-            message = "Token válido, acceso autorizado",
-            idUsuario,
-            correo,
-            nombreUsuario,
-            rol
+            Mensaje = resultado.Mensaje,
+            Token = resultado.Token,
+            IdUsuario = resultado.UsuarioInfo!.idUsuario
+        };
 
-        });
+        return Ok(response);
     }
 }

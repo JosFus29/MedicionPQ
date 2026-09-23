@@ -18,9 +18,19 @@ builder.Services.AddControllers();
 
 // Conectar Entity Framework con la base de datos
 // Lee la cadena de conexión "DefaultConnection" desde el archivo appsettings.json
-builder.Services.AddDbContext<MedicionPQ.Data.AppDBContex>(options =>
+// Register the EF Core DbContext for dependency injection.
+// NOTE: class renamed to AppDbContext (see Data/AppDbContext.cs).
+builder.Services.AddDbContext<MedicionPQ.Data.AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+
+builder.Services.AddScoped<IAuthService, AuthService>();
+// Register user service for user-related operations (separation of concerns)
+builder.Services.AddScoped<IUserService, UserService>();
+// Password hashing service
+builder.Services.AddScoped<IPasswordService, PasswordService>();
+// Ensure UserService is registered with the password service dependency
+builder.Services.AddScoped<UserService>();
 // Configuración de autenticación con JWT
 // Establece "Bearer" como el esquema de autenticación por defecto
 builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)

@@ -8,6 +8,8 @@ namespace MedicionPQ.Services;
 
 /// <summary>
 /// Servicio encargado de la generación de JSON Web Tokens (JWT) para la autenticación y autorización en la API.
+/// Este servicio sólo se encarga de crear tokens firmados. La validación de credenciales y la lógica
+/// de negocio deben residir en AuthService (Services/AuthService.cs) que consume este servicio.
 /// </summary>
 public class TokenService
 {
