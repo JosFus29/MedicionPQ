@@ -28,5 +28,7 @@
     <None Remove="Tests\**\*" />
     <None Remove="Tools\**\*" />
   </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
 
 </Project>

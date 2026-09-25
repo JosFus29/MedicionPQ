@@ -35,6 +35,18 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
+    /// GET /api/Users
+    /// Devuelve todos los usuarios. Solo administradores pueden acceder.
+    /// </summary>
+    [HttpGet]
+    [Authorize(Roles = "Administrador")]
+    public async Task<IActionResult> GetAll()
+    {
+        var users = await _userService.GetAllUsersAsync();
+        return Ok(users);
+    }
+
+    /// <summary>
     /// POST /api/Users
     /// Crea un nuevo usuario. Solo administradores pueden acceder.
     /// </summary>
@@ -55,5 +67,25 @@ public class UsersController : ControllerBase
         if (!exito) return BadRequest(new { mensaje });
 
         return CreatedAtAction(nameof(GetAdministradores), new { id = usuario!.idUsuario }, usuario);
+    }
+
+    /// <summary>
+    /// PUT /api/Users/{id}
+    /// Actualiza los datos de un usuario existente (no actualiza la contraseña). Solo administradores.
+    /// </summary>
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "Administrador")]
+    public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest request)
+    {
+        if (request == null) return BadRequest();
+
+        var emailAttr = new EmailAddressAttribute();
+        if (!emailAttr.IsValid(request.Correo)) return BadRequest(new { mensaje = "Correo inválido." });
+        if (string.IsNullOrWhiteSpace(request.NombreUsuario)) return BadRequest(new { mensaje = "Nombre de usuario requerido." });
+
+        var (exito, mensaje, usuario) = await _userService.UpdateUserAsync(id, request);
+        if (!exito) return BadRequest(new { mensaje });
+
+        return Ok(usuario);
     }
 }
