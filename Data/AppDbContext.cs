@@ -22,4 +22,9 @@ public class AppDbContext : DbContext
     /// DbSet for users (tabla Usuarios).
     /// </summary>
     public DbSet<Usuario> Usuarios { get; set; }
+
+    /// <summary>
+    /// DbSet para los medidores (tabla Medidor).
+    /// </summary>
+    public DbSet<Medidor> Medidores { get; set; }
 }

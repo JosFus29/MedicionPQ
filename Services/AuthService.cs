@@ -48,4 +48,22 @@ public class AuthService : IAuthService
 
         return (true, "Inicio de sesión exitoso", tokenGenerado, usuarioEnDb);
     }
+
+    public async Task<(bool Exito, string Mensaje, string Token)> RenovarSesionAsync(int idUsuario)
+{
+    var usuarioEnDb = await _context.Usuarios
+        .FirstOrDefaultAsync(u => u.idUsuario == idUsuario);
+
+    if (usuarioEnDb == null)
+        return (false, "Usuario no encontrado.", string.Empty);
+
+    if (!usuarioEnDb.edo)
+        return (false, "El usuario está inactivo.", string.Empty);
+
+    // Se vuelve a consultar el usuario en base de datos (no se confía solo en los
+    // claims del token viejo) para asegurar que su tiempoSesion y estado sigan vigentes.
+    string nuevoToken = _tokenService.GenerarToken(usuarioEnDb);
+
+    return (true, "Sesión renovada correctamente.", nuevoToken);
+}
 }

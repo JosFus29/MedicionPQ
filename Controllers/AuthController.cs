@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using MedicionPQ.Modelos;
 using MedicionPQ.Services;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MedicionPQ.Controllers;
 
@@ -59,5 +61,33 @@ public class AuthController : ControllerBase
         };
 
         return Ok(response);
+    }
+    /// <summary>
+    /// Endpoint POST /api/Auth/renovar-sesion
+    /// Genera un nuevo token JWT para el usuario actualmente autenticado, extendiendo
+    /// su sesión antes de que el token vigente expire.
+    /// Requiere que el token actual todavía sea válido (no haya expirado) — si ya expiró,
+    /// [Authorize] rechaza la petición con 401 y el usuario debe volver a iniciar sesión.
+    /// </summary>
+    /// <returns>200 OK con el nuevo token, o 401 si el usuario ya no es válido.</returns>
+    [HttpPost("renovar-sesion")]
+    [Authorize]
+    public async Task<IActionResult> RenovarSesion()
+    {
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (idClaim == null || !int.TryParse(idClaim, out int idUsuario))
+        {
+            return Unauthorized(new { mensaje = "Token inválido." });
+        }
+
+        var resultado = await _authService.RenovarSesionAsync(idUsuario);
+
+        if (!resultado.Exito)
+        {
+            return Unauthorized(new { mensaje = resultado.Mensaje });
+        }
+
+            return Ok(new { token = resultado.Token, mensaje = resultado.Mensaje });
     }
 }
