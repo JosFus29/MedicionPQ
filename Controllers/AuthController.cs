@@ -20,6 +20,7 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
 
+    /// <summary>Inicializa el controlador con el servicio de autenticación.</summary>
     public AuthController(IAuthService authService)
     {
         _authService = authService;
@@ -32,6 +33,9 @@ public class AuthController : ControllerBase
     /// <param name="request">LoginRequest con Correo y Contrasena.</param>
     /// <returns>LoginResponse con token y datos públicos del usuario.</returns>
     [HttpPost("login")]
+    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         if (string.IsNullOrEmpty(request.Correo) || string.IsNullOrEmpty(request.Contrasena))

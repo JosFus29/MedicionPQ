@@ -1,17 +1,16 @@
 namespace MedicionPQ.Services;
 
-/// <summary>
-/// Servicio simple para hashear y verificar contraseñas.
-/// </summary>
+/// <summary>Define las operaciones para proteger y verificar contraseñas.</summary>
 public interface IPasswordService
 {
-    /// <summary>
-    /// Genera el hash de una contraseña en texto plano.
-    /// </summary>
+    /// <summary>Convierte una contraseña en texto plano en un hash seguro.</summary>
+    /// <param name="plainPassword">Contraseña que se va a proteger.</param>
+    /// <returns>Hash que puede guardarse en la base de datos.</returns>
     string HashPassword(string plainPassword);
 
-    /// <summary>
-    /// Verifica que la contraseña en texto plano coincida con el hash guardado.
-    /// </summary>
+    /// <summary>Comprueba una contraseña recibida contra el hash almacenado.</summary>
+    /// <param name="hashedPassword">Hash previamente generado.</param>
+    /// <param name="providedPassword">Contraseña que se está validando.</param>
+    /// <returns>Indica si la contraseña proporcionada es válida.</returns>
     bool VerifyPassword(string hashedPassword, string providedPassword);
 }

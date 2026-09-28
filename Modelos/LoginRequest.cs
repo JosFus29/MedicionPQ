@@ -9,11 +9,13 @@ public class LoginRequest
     /// <summary>
     /// Correo electrónico del usuario.
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.EmailAddress]
     public string Correo { get; set; } = string.Empty;
 
     /// <summary>
     /// Contraseña en texto plano que el usuario proporciona al autenticarse.
     /// El servidor la verificará contra el hash almacenado.
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MinLength(8)]
     public string Contrasena { get; set; } = string.Empty;
 }

@@ -4,11 +4,11 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MedicionPQ.Modelos;
 
-[Table("Usuario")]
 /// <summary>
 /// Entidad que representa la tabla Usuario en la base de datos.
 /// Contiene información mínima del usuario y el hash de la contraseña en la propiedad <see cref="contrasena"/>.
 /// </summary>
+[Table("Usuario")]
 public class Usuario
 {
     /// <summary>
@@ -47,7 +47,9 @@ public class Usuario
     /// </summary>
     public enum TipoRol : byte
     {
+        /// <summary>Puede acceder a las operaciones de administración.</summary>
         Administrador = 1,
+        /// <summary>Cuenta sin permisos administrativos.</summary>
         Usuario = 2
     }
 

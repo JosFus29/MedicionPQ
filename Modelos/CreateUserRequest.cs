@@ -11,14 +11,14 @@ public class CreateUserRequest
     /// <summary>
     /// Correo electrónico (unique) del nuevo usuario.
     /// </summary>
-    [Required]
+    [Required, EmailAddress]
     public string Correo { get; set; } = string.Empty;
 
     /// <summary>
     /// Contraseña en texto plano que será hasheada antes de persistir.
     /// Debe cumplir la política mínima (ej. >= 8 caracteres).
     /// </summary>
-    [Required]
+    [Required, MinLength(8)]
     public string Contrasena { get; set; } = string.Empty;
 
     /// <summary>
@@ -30,5 +30,6 @@ public class CreateUserRequest
     /// <summary>
     /// Rol asignado al usuario creado. Por defecto Usuario.
     /// </summary>
+    [EnumDataType(typeof(Usuario.TipoRol))]
     public Usuario.TipoRol Rol { get; set; } = Usuario.TipoRol.Usuario;
 }

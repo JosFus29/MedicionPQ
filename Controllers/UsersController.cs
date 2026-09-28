@@ -16,6 +16,7 @@ public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
 
+    /// <summary>Inicializa el controlador con el servicio de usuarios.</summary>
     public UsersController(IUserService userService)
     {
         _userService = userService;
@@ -66,7 +67,7 @@ public class UsersController : ControllerBase
         var (exito, mensaje, usuario) = await _userService.CreateUserAsync(request.Correo, request.Contrasena, request.NombreUsuario, request.Rol);
         if (!exito) return BadRequest(new { mensaje });
 
-        return CreatedAtAction(nameof(GetAdministradores), new { id = usuario!.idUsuario }, usuario);
+        return CreatedAtAction(nameof(GetAll), new { }, usuario);
     }
 
     /// <summary>

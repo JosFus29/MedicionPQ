@@ -2,17 +2,12 @@ using MedicionPQ.Modelos;
 
 namespace MedicionPQ.Services;
 
-/// <summary>
-/// Interfaz que define las operaciones de autenticación del sistema.
-/// Implementada por Services/AuthService.cs.
-/// Consumidores principales:
-/// - Controllers/AuthController.cs (login endpoint)
-/// - Cualquier servicio que necesite validar credenciales desde la capa de presentación
-/// </summary>
+/// <summary>Define las operaciones de autenticación disponibles para los controladores.</summary>
 public interface IAuthService
 {
-    /// <summary>
-    /// Valida las credenciales y devuelve una tupla con el resultado, mensaje, token y la info del usuario.
-    /// </summary>
+    /// <summary>Valida las credenciales y devuelve el resultado del acceso.</summary>
+    /// <param name="correo">Correo de la cuenta.</param>
+    /// <param name="contrasena">Contraseña que se va a verificar.</param>
+    /// <returns>Mensaje y, cuando el acceso se autoriza, token y datos de la cuenta.</returns>
     Task<(bool Exito, string Mensaje, string Token, Usuario? UsuarioInfo)> ValidarLoginAsync(string correo, string contrasena);
 }

@@ -7,12 +7,16 @@ namespace MedicionPQ.Modelos;
 /// </summary>
 public class UpdateUserRequest
 {
-    [Required]
+    /// <summary>Correo nuevo y único de la cuenta.</summary>
+    [Required, EmailAddress]
     public string Correo { get; set; } = string.Empty;
 
+    /// <summary>Nombre que se muestra para la cuenta.</summary>
     [Required]
     public string NombreUsuario { get; set; } = string.Empty;
 
+    /// <summary>Rol: 1 para Administrador o 2 para Usuario.</summary>
+    [EnumDataType(typeof(Usuario.TipoRol))]
     public Usuario.TipoRol Rol { get; set; } = Usuario.TipoRol.Usuario;
 
     /// <summary>
@@ -23,5 +27,6 @@ public class UpdateUserRequest
     /// <summary>
     /// Tiempo de sesión en minutos para el token.
     /// </summary>
+    [Range(1, 1440)]
     public int TiempoSesion { get; set; } = 60;
 }
