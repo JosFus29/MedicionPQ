@@ -113,3 +113,33 @@ Los usuarios se devuelven como DTO con `idUsuario`, `correo`, `nombreUsuario`, `
 - El estado inactivo impide iniciar sesión; usuarios inactivos tampoco deben conservar un token válido en el cliente.
 - `GET /api/Users` y `GET /api/Users/admins` devuelven arreglos, incluso cuando no hay resultados.
 - Errores de validación del modelo usan la respuesta estándar `400` de ASP.NET Core; otros errores de negocio devuelven `{ "mensaje": "..." }`.
+
+## Inicio local para integrar el frontend
+
+Estos pasos se ejecutan desde la carpeta del repositorio. Requieren el SDK de .NET 10 y una instancia de SQL Server/LocalDB con la base de datos y la tabla `Usuario` listas.
+
+1. Configura la conexión `ConnectionStrings:DefaultConnection` para tu SQL Server en User Secrets (recomendado) o en una variable de entorno. No subas credenciales de base de datos al repositorio.
+2. Cada desarrollador genera y guarda su propia clave JWT localmente. No copies una clave de otra persona ni la envíes al frontend:
+
+```powershell
+$bytes = New-Object byte[] 48
+$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+$key = [Convert]::ToBase64String($bytes)
+dotnet user-secrets set "Jwt:Key" $key --project .\MedicionPQ.csproj
+dotnet user-secrets set "Jwt:Issuer" "MedicionPQ" --project .\MedicionPQ.csproj
+dotnet user-secrets set "Jwt:Audience" "MedicionPQ.Client" --project .\MedicionPQ.csproj
+```
+
+3. Inicia la API con el perfil HTTPS: `dotnet run --launch-profile https --project .\MedicionPQ.csproj`. La API publica `https://localhost:7090` y `http://localhost:5201`; Swagger queda en `https://localhost:7090/swagger`. Si el certificado local no estÃ¡ confiado, ejecuta `dotnet dev-certs https --trust` y acepta el diÃ¡logo del sistema.
+4. Configura el front para llamar a la URL de la API. Si usa Vite, puede crear un archivo local `.env.local` (no subirlo si contiene valores privados) con, por ejemplo:
+
+```env
+VITE_API_BASE_URL=https://localhost:7090
+```
+
+El nombre `VITE_API_BASE_URL` es una convención de ejemplo: el frontend debe leer el nombre que use su código. En desarrollo, la API permite por defecto el origen `http://localhost:5173`; si el front corre en otro origen, actualiza `Frontend:AllowedOrigins` en `appsettings.Development.json` con el origen exacto (esquema, host y puerto, sin barra final).
+
+5. El front inicia sesión con `POST /api/Auth/login`, conserva el `token` de la respuesta y lo manda en solicitudes protegidas como `Authorization: Bearer <token>`. El front nunca recibe ni configura `Jwt:Key`.
+
+Cada integrante configura sus propios User Secrets en su equipo. Para desplegar, configura `Jwt__Key`, `Jwt__Issuer`, `Jwt__Audience` y la cadena de conexión como secretos/variables del entorno del backend; permite en CORS solo el origen HTTPS publicado del frontend. No reutilices el secreto local y no guardes secretos en Git.
