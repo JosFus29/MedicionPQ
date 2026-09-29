@@ -23,16 +23,18 @@ public class AuthService : IAuthService
     /// <param name="correo">Correo que identifica la cuenta.</param>
     /// <param name="contrasena">Contraseña enviada por el cliente; solo se verifica contra el hash almacenado.</param>
     /// <returns>Resultado, mensaje, token y cuenta autenticada. En caso de error, el token queda vacío.</returns>
-    public async Task<(bool Exito, string Mensaje, string Token, Usuario? UsuarioInfo)> ValidarLoginAsync(string correo, string contrasena)
+    public async Task<(bool Exito, string Mensaje, string Token, DateTime? ExpiresAtUtc, int ExpiresIn, Usuario? UsuarioInfo)> ValidarLoginAsync(string correo, string contrasena)
     {
         var usuarioEnDb = await _context.Usuarios.FirstOrDefaultAsync(u => u.correo == correo);
-        if (usuarioEnDb == null) return (false, "Credenciales incorrectas.", string.Empty, null);
+        if (usuarioEnDb == null) return (false, "Credenciales incorrectas.", string.Empty, null, 0, null);
 
         var passwordValida = _passwordService.VerifyPassword(usuarioEnDb.contrasena, contrasena);
-        if (!passwordValida) return (false, "Credenciales incorrectas.", string.Empty, null);
-        if (!usuarioEnDb.edo) return (false, "El usuario está inactivo.", string.Empty, null);
+        if (!passwordValida) return (false, "Credenciales incorrectas.", string.Empty, null, 0, null);
+        if (!usuarioEnDb.edo) return (false, "El usuario está inactivo.", string.Empty, null, 0, null);
+        if (usuarioEnDb.tiempoSesion is < 1 or > 1440)
+            return (false, "El tiempo de sesión configurado para el usuario no es válido.", string.Empty, null, 0, null);
 
         var tokenGenerado = _tokenService.GenerarToken(usuarioEnDb);
-        return (true, "Inicio de sesión exitoso", tokenGenerado, usuarioEnDb);
+        return (true, "Inicio de sesión exitoso", tokenGenerado.Token, tokenGenerado.ExpiresAtUtc, tokenGenerado.ExpiresIn, usuarioEnDb);
     }
 }

@@ -9,5 +9,5 @@ public interface IAuthService
     /// <param name="correo">Correo de la cuenta.</param>
     /// <param name="contrasena">Contraseña que se va a verificar.</param>
     /// <returns>Mensaje y, cuando el acceso se autoriza, token y datos de la cuenta.</returns>
-    Task<(bool Exito, string Mensaje, string Token, Usuario? UsuarioInfo)> ValidarLoginAsync(string correo, string contrasena);
+    Task<(bool Exito, string Mensaje, string Token, DateTime? ExpiresAtUtc, int ExpiresIn, Usuario? UsuarioInfo)> ValidarLoginAsync(string correo, string contrasena);
 }

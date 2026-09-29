@@ -59,6 +59,9 @@ public class AuthController : ControllerBase
         {
             Mensaje = resultado.Mensaje,
             Token = resultado.Token,
+            TokenType = "Bearer",
+            ExpiresIn = resultado.ExpiresIn,
+            ExpiresAtUtc = resultado.ExpiresAtUtc!.Value,
             IdUsuario = resultado.UsuarioInfo!.idUsuario
         };
 

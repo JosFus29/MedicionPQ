@@ -7,16 +7,19 @@ Backend ASP.NET Core para iniciar sesión y administrar usuarios. La API usa SQL
 - .NET SDK 10.
 - SQL Server o LocalDB.
 - Configura `ConnectionStrings:DefaultConnection` en `appsettings.json` o mediante variables de entorno.
-- Configura el secreto JWT fuera del repositorio. En desarrollo:
+- El proyecto ya incluye un `UserSecretsId`. En este entorno de desarrollo la clave JWT aleatoria ya está guardada fuera del repositorio. Para generar una en otra máquina, desde la carpeta del proyecto:
 
 ```powershell
-dotnet user-secrets init
-dotnet user-secrets set "Jwt:Key" "<secreto-aleatorio-de-al-menos-32-bytes>"
+$bytes = New-Object byte[] 48
+$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+$key = [Convert]::ToBase64String($bytes)
+dotnet user-secrets set "Jwt:Key" $key
 ```
 
 La clave puede generarse con un gestor de secretos. En despliegues configura `Jwt__Key` como variable de entorno, y define también `Jwt__Issuer` y `Jwt__Audience`. La aplicación falla al arrancar si falta una clave de 32 bytes o más, el emisor o la audiencia.
 
-Para permitir que el navegador del frontend consuma la API, agrega su origen exacto en `Frontend:AllowedOrigins` (esquema, host y puerto, sin barra final), por ejemplo en `appsettings.Development.json`:
+En desarrollo, `appsettings.Development.json` permite el origen Vite `http://localhost:5173`. Si el front usa otra dirección, reemplázala por su origen exacto (esquema, host y puerto, sin barra final):
 
 ```json
 {
@@ -65,9 +68,14 @@ Respuesta `200`:
 {
   "mensaje": "Inicio de sesión exitoso",
   "token": "<jwt>",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "expiresAtUtc": "2026-09-29T20:00:00Z",
   "idUsuario": 1
 }
 ```
+
+`expiresIn` se expresa en segundos y `expiresAtUtc` es la fecha de expiración UTC. Ambos valores y el claim `exp` del JWT se calculan con `Usuario.tiempoSesion` (en minutos) leído de la base al iniciar sesión. El frontend debe guardar `token` y enviarlo en las rutas protegidas como `Authorization: Bearer <token>`; puede usar `expiresAtUtc` para cerrar la sesión visualmente, pero el servidor siempre valida la expiración firmada del JWT. Si se cambia `tiempoSesion`, el cambio aplica al siguiente inicio de sesión; los tokens ya emitidos conservan su vencimiento original.
 
 Las credenciales inválidas y las cuentas inactivas devuelven `401`. Los campos requeridos, formato de correo y mínimo de 8 caracteres se validan automáticamente y producen `400` si no son válidos.
 

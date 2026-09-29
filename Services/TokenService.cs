@@ -21,8 +21,11 @@ public class TokenService
     /// <summary>Genera un JWT firmado con la identidad, rol y vigencia de la cuenta indicada.</summary>
     /// <param name="usuario">Cuenta previamente autenticada.</param>
     /// <returns>Token JWT serializado para enviar al cliente.</returns>
-    public string GenerarToken(Usuario usuario)
+    public TokenGenerado GenerarToken(Usuario usuario)
     {
+        if (usuario.tiempoSesion is < 1 or > 1440)
+            throw new ArgumentOutOfRangeException(nameof(usuario), "El tiempo de sesión debe estar entre 1 y 1440 minutos.");
+
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, usuario.idUsuario.ToString()),
@@ -42,6 +45,9 @@ public class TokenService
             expires: expiresAt,
             signingCredentials: credentials);
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        return new TokenGenerado(new JwtSecurityTokenHandler().WriteToken(token), expiresAt, usuario.tiempoSesion * 60);
     }
 }
+
+/// <summary>JWT y vigencia exacta emitidos para una sesión.</summary>
+public sealed record TokenGenerado(string Token, DateTime ExpiresAtUtc, int ExpiresIn);
