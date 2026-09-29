@@ -9,6 +9,15 @@ using Microsoft.OpenApi;
 // Punto de entrada: configura los servicios y el flujo HTTP de la API.
 var builder = WebApplication.CreateBuilder(args);
 
+// En desarrollo, recupera User Secrets si la configuración automática no proporcionó
+// una clave JWT válida (por ejemplo, si una variable de entorno vacía la sustituyó).
+var configuredJwtKey = builder.Configuration["Jwt:Key"];
+if (builder.Environment.IsDevelopment()
+    && (string.IsNullOrWhiteSpace(configuredJwtKey) || Encoding.UTF8.GetByteCount(configuredJwtKey) < 32))
+{
+    builder.Configuration.AddUserSecrets<Program>(optional: true);
+}
+
 // Registra los controladores que publican los endpoints REST.
 builder.Services.AddControllers();
 
@@ -48,6 +57,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<IMedidorService, MedidorService>();
 
 // Comprueba la configuración JWT antes de iniciar para evitar emitir tokens con datos incompletos.
 var jwtKey = builder.Configuration["Jwt:Key"];

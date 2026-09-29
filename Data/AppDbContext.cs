@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+
 using MedicionPQ.Modelos;
 
 namespace MedicionPQ.Data;
@@ -16,4 +17,9 @@ public class AppDbContext : DbContext
     /// Conjunto de registros de usuarios asociado a la tabla <c>Usuario</c>.
     /// </summary>
     public DbSet<Usuario> Usuarios { get; set; }
+
+    /// <summary>
+    /// DbSet para los medidores (tabla Medidor).
+    /// </summary>
+    public DbSet<Medidor> Medidores { get; set; }
 }
