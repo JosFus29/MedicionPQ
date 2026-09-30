@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using MedicionPQ.Services;
 using MedicionPQ.Modelos;
-using System.ComponentModel.DataAnnotations;
 
 namespace MedicionPQ.Controllers;
 
@@ -57,13 +56,6 @@ public class UsersController : ControllerBase
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
     {
-        if (request == null) return BadRequest();
-
-        var emailAttr = new EmailAddressAttribute();
-        if (!emailAttr.IsValid(request.Correo)) return BadRequest(new { mensaje = "Correo inválido." });
-        if (string.IsNullOrWhiteSpace(request.NombreUsuario)) return BadRequest(new { mensaje = "Nombre de usuario requerido." });
-        if (string.IsNullOrWhiteSpace(request.Contrasena) || request.Contrasena.Length < 8) return BadRequest(new { mensaje = "La contraseña debe tener al menos 8 caracteres." });
-
         var (exito, mensaje, usuario) = await _userService.CreateUserAsync(request.Correo, request.Contrasena, request.NombreUsuario, request.Rol);
         if (!exito) return BadRequest(new { mensaje });
 
@@ -78,12 +70,6 @@ public class UsersController : ControllerBase
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest request)
     {
-        if (request == null) return BadRequest();
-
-        var emailAttr = new EmailAddressAttribute();
-        if (!emailAttr.IsValid(request.Correo)) return BadRequest(new { mensaje = "Correo inválido." });
-        if (string.IsNullOrWhiteSpace(request.NombreUsuario)) return BadRequest(new { mensaje = "Nombre de usuario requerido." });
-
         var (exito, mensaje, usuario) = await _userService.UpdateUserAsync(id, request);
         if (!exito) return BadRequest(new { mensaje });
 

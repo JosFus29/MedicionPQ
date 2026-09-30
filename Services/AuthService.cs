@@ -25,7 +25,10 @@ public class AuthService : IAuthService
     /// <returns>Resultado, mensaje, token y cuenta autenticada. En caso de error, el token queda vacío.</returns>
     public async Task<(bool Exito, string Mensaje, string Token, DateTime? ExpiresAtUtc, int ExpiresIn, Usuario? UsuarioInfo)> ValidarLoginAsync(string correo, string contrasena)
     {
-        var usuarioEnDb = await _context.Usuarios.FirstOrDefaultAsync(u => u.correo == correo);
+        var correoNormalizado = correo.Trim().ToLowerInvariant();
+        var usuarioEnDb = await _context.Usuarios
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.correo == correoNormalizado);
         if (usuarioEnDb == null) return (false, "Credenciales incorrectas.", string.Empty, null, 0, null);
 
         var passwordValida = _passwordService.VerifyPassword(usuarioEnDb.contrasena, contrasena);

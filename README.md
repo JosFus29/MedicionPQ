@@ -128,7 +128,7 @@ $rng.GetBytes($bytes)
 $key = [Convert]::ToBase64String($bytes)
 dotnet user-secrets set "Jwt:Key" $key --project .\MedicionPQ.csproj
 dotnet user-secrets set "Jwt:Issuer" "MedicionPQ" --project .\MedicionPQ.csproj
-dotnet user-secrets set "Jwt:Audience" "MedicionPQ.Client" --project .\MedicionPQ.csproj
+dotnet user-secrets set "Jwt:Audience" "MedicionPQUsuarios" --project .\MedicionPQ.csproj
 ```
 
 3. Inicia la API con el perfil HTTPS: `dotnet run --launch-profile https --project .\MedicionPQ.csproj`. La API publica `https://localhost:7090` y `http://localhost:5201`; Swagger queda en `https://localhost:7090/swagger`. Si el certificado local no estÃ¡ confiado, ejecuta `dotnet dev-certs https --trust` y acepta el diÃ¡logo del sistema.

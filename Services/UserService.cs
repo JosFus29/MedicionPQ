@@ -22,6 +22,7 @@ public class UserService : IUserService
     public async Task<List<UsuarioDto>> GetAdministradoresAsync()
     {
         return await _context.Usuarios
+            .AsNoTracking()
             .Where(u => u.rol == Usuario.TipoRol.Administrador)
             .Select(u => new UsuarioDto
             {
@@ -40,6 +41,7 @@ public class UserService : IUserService
     public async Task<List<UsuarioDto>> GetAllUsersAsync()
     {
         return await _context.Usuarios
+            .AsNoTracking()
             .Select(u => new UsuarioDto
             {
                 idUsuario = u.idUsuario,
@@ -63,9 +65,12 @@ public class UserService : IUserService
         if (string.IsNullOrWhiteSpace(correo) || string.IsNullOrWhiteSpace(contrasena) || string.IsNullOrWhiteSpace(nombreUsuario))
             return (false, "Datos incompletos.", null);
 
+        correo = correo.Trim().ToLowerInvariant();
+        nombreUsuario = nombreUsuario.Trim();
         var emailAttr = new System.ComponentModel.DataAnnotations.EmailAddressAttribute();
         if (!emailAttr.IsValid(correo)) return (false, "Correo inválido.", null);
         if (contrasena.Length < 8) return (false, "La contraseña debe tener al menos 8 caracteres.", null);
+        if (!Enum.IsDefined(rol)) return (false, "Rol inválido.", null);
 
         var existente = await _context.Usuarios.AnyAsync(u => u.correo == correo);
         if (existente) return (false, "Ya existe un usuario con ese correo.", null);
@@ -103,15 +108,20 @@ public class UserService : IUserService
         var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.idUsuario == id);
         if (usuario == null) return (false, "Usuario no encontrado.", null);
 
+        var correoNormalizado = request.Correo?.Trim().ToLowerInvariant();
+        var nombreNormalizado = request.NombreUsuario?.Trim();
         var emailAttr = new System.ComponentModel.DataAnnotations.EmailAddressAttribute();
-        if (!emailAttr.IsValid(request.Correo)) return (false, "Correo inválido.", null);
-        if (string.IsNullOrWhiteSpace(request.NombreUsuario)) return (false, "Nombre de usuario requerido.", null);
+        if (string.IsNullOrWhiteSpace(correoNormalizado) || !emailAttr.IsValid(correoNormalizado))
+            return (false, "Correo inválido.", null);
+        if (string.IsNullOrWhiteSpace(nombreNormalizado)) return (false, "Nombre de usuario requerido.", null);
+        if (!Enum.IsDefined(request.Rol)) return (false, "Rol inválido.", null);
+        if (request.TiempoSesion is < 1 or > 1440) return (false, "El tiempo de sesión debe estar entre 1 y 1440 minutos.", null);
 
-        var otro = await _context.Usuarios.FirstOrDefaultAsync(u => u.correo == request.Correo && u.idUsuario != id);
+        var otro = await _context.Usuarios.FirstOrDefaultAsync(u => u.correo == correoNormalizado && u.idUsuario != id);
         if (otro != null) return (false, "El correo ya está en uso por otro usuario.", null);
 
-        usuario.correo = request.Correo;
-        usuario.nombreUsuario = request.NombreUsuario;
+        usuario.correo = correoNormalizado;
+        usuario.nombreUsuario = nombreNormalizado;
         usuario.rol = request.Rol;
         usuario.edo = request.Edo;
         usuario.tiempoSesion = request.TiempoSesion;

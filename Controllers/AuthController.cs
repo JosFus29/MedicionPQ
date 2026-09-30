@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using MedicionPQ.Modelos;
 using MedicionPQ.Services;
-using System.ComponentModel.DataAnnotations;
 
 namespace MedicionPQ.Controllers;
 
@@ -38,16 +37,6 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        if (string.IsNullOrEmpty(request.Correo) || string.IsNullOrEmpty(request.Contrasena))
-        {
-            return BadRequest(new { mensaje = "El correo y la contraseña son obligatorios." });
-        }
-
-        // Basic validation: email format and password length
-        var emailAttr = new EmailAddressAttribute();
-        if (!emailAttr.IsValid(request.Correo)) return BadRequest(new { mensaje = "Correo inválido." });
-        if (request.Contrasena.Length < 8) return BadRequest(new { mensaje = "La contraseña debe tener al menos 8 caracteres." });
-
         var resultado = await _authService.ValidarLoginAsync(request.Correo, request.Contrasena);
 
         if (!resultado.Exito)
