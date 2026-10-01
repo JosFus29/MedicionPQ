@@ -16,4 +16,7 @@ public class AppDbContext : DbContext
     /// Conjunto de registros de usuarios asociado a la tabla <c>Usuario</c>.
     /// </summary>
     public DbSet<Usuario> Usuarios { get; set; }
+
+    /// <summary>Conjunto de controladores RF asociado a la tabla <c>ControladorRF</c>.</summary>
+    public DbSet<ControladorRF> ControladoresRF { get; set; }
 }

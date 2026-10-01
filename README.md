@@ -50,6 +50,27 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | `GET /api/Users/admins` | Administrador | Lista solo usuarios con rol Administrador. |
 | `POST /api/Users` | Administrador | Crea un usuario con contraseña hasheada. Devuelve `201` y el DTO creado. |
 | `PUT /api/Users/{id}` | Administrador | Actualiza correo, nombre, rol, estado y duración de sesión; no cambia contraseña. |
+| `GET /api/ControladorRF` | Usuario autenticado | Lista los controladores RF. |
+| `GET /api/ControladorRF/{id}` | Usuario autenticado | Consulta el detalle de un controlador RF. |
+| `POST /api/ControladorRF` | Administrador | Registra un controlador RF y devuelve `201`. |
+| `PUT /api/ControladorRF/{id}` | Administrador | Actualiza los datos de un controlador RF. |
+
+### Controladores RF
+
+Las cuatro operaciones requieren un JWT válido. Cualquier usuario autenticado puede listar (`GET /api/ControladorRF`) y consultar el detalle por `idCtrlRF` (`GET /api/ControladorRF/{id}`). El alta y la modificación requieren además el rol `Administrador`; usuarios sin ese rol reciben `403`.
+
+`POST /api/ControladorRF` recibe `numSerie` (máximo 20 caracteres), `dirIP` (máximo 20), `nombre` (máximo 50) y `edo` (entero). El identificador `idCtrlRF` se genera en la base de datos. Ejemplo:
+
+```json
+{
+  "numSerie": "RF-0001",
+  "dirIP": "192.168.1.20",
+  "nombre": "Controlador principal",
+  "edo": 1
+}
+```
+
+`PUT /api/ControladorRF/{id}` recibe esos mismos cuatro campos y reemplaza sus valores. El catálogo numérico de `edo` (activo, mantenimiento e inactivo) está pendiente de definición; por ello, la API acepta el entero recibido sin asignar aún significados ni restringir sus valores. Listados y detalles devuelven `idCtrlRF`, `numSerie`, `dirIP`, `nombre` y `edo`; un identificador inexistente produce `404`.
 
 ### Iniciar sesión
 
@@ -102,7 +123,7 @@ Los usuarios se devuelven como DTO con `idUsuario`, `correo`, `nombreUsuario`, `
 - `Program.cs`: registra controladores, EF Core, servicios, JWT, CORS, Swagger y el orden de middlewares.
 - `Controllers/`: define rutas HTTP, códigos de respuesta y autorización; delega reglas a servicios.
 - `Services/`: implementa autenticación, administración de usuarios, generación de JWT y hash de contraseñas.
-- `Data/AppDbContext.cs`: contexto de Entity Framework y acceso a la entidad `Usuario`.
+- `Data/AppDbContext.cs`: contexto de Entity Framework y acceso a las entidades `Usuario` y `ControladorRF`.
 - `Modelos/`: entidad persistida, solicitudes de entrada y DTOs de respuesta.
 - `Tests/`: pruebas unitarias existentes para autenticación y servicios de usuarios.
 - `Tools/MigrateAdminPassword/`: herramienta auxiliar para migrar la contraseña de administrador.

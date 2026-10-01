@@ -46,6 +46,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Registra servicios de negocio con ciclo de vida por solicitud HTTP.
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
+// Registra las operaciones de consulta, alta y actualización de controladores RF.
+builder.Services.AddScoped<IControladorRFService, ControladorRFService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<TokenService>();
 
