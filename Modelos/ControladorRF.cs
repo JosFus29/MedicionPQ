@@ -25,4 +25,7 @@ public class ControladorRF
 
     /// <summary>Estado numérico definido por el catálogo de la base de datos.</summary>
     public int edo { get; set; }
+
+    /// <summary>Medidores asociados a este controlador; la relación permite varios medidores.</summary>
+    public ICollection<MedidorQP> Medidores { get; set; } = new List<MedidorQP>();
 }

@@ -48,6 +48,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 // Registra las operaciones de consulta, alta y actualización de controladores RF.
 builder.Services.AddScoped<IControladorRFService, ControladorRFService>();
+// Servicio para validar la relación con ControladorRF y guardar medidores QP.
+builder.Services.AddScoped<IMedidorQPService, MedidorQPService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<TokenService>();
 

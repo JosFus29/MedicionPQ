@@ -19,4 +19,17 @@ public class AppDbContext : DbContext
 
     /// <summary>Conjunto de controladores RF asociado a la tabla <c>ControladorRF</c>.</summary>
     public DbSet<ControladorRF> ControladoresRF { get; set; }
+
+    /// <summary>Conjunto de medidores QP asociado a la tabla <c>MedidorQP</c>.</summary>
+    public DbSet<MedidorQP> MedidoresQP { get; set; }
+
+    /// <summary>Configura la relación de muchos medidores hacia un único controlador RF.</summary>
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<MedidorQP>()
+            .HasOne<ControladorRF>()
+            .WithMany(controlador => controlador.Medidores)
+            .HasForeignKey(medidor => medidor.idCtrlRF)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
 }

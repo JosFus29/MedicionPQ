@@ -54,10 +54,12 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | `GET /api/ControladorRF/{id}` | Usuario autenticado | Consulta el detalle de un controlador RF. |
 | `POST /api/ControladorRF` | Administrador | Registra un controlador RF y devuelve `201`. |
 | `PUT /api/ControladorRF/{id}` | Administrador | Actualiza los datos de un controlador RF. |
+| `POST /api/MedidoresQP` | Administrador | Registra un medidor asociado a un controlador RF. |
+| `PUT /api/MedidoresQP/{id}` | Administrador | Actualiza todos los campos editables de un medidor. |
 
 ### Controladores RF
 
-Las cuatro operaciones requieren un JWT válido. Cualquier usuario autenticado puede listar (`GET /api/ControladorRF`) y consultar el detalle por `idCtrlRF` (`GET /api/ControladorRF/{id}`). El alta y la modificación requieren además el rol `Administrador`; usuarios sin ese rol reciben `403`.
+Las operaciones de controladores requieren un JWT válido. Cualquier usuario autenticado puede listar (`GET /api/ControladorRF`) y consultar el detalle por `idCtrlRF` (`GET /api/ControladorRF/{id}`). Ambas consultas incluyen la propiedad `medidores` con los medidores asociados. El alta y la modificación del controlador requieren además el rol `Administrador`; usuarios sin ese rol reciben `403`.
 
 `POST /api/ControladorRF` recibe `numSerie` (máximo 20 caracteres), `dirIP` (máximo 20), `nombre` (máximo 50) y `edo` (entero). El identificador `idCtrlRF` se genera en la base de datos. Ejemplo:
 
@@ -71,6 +73,25 @@ Las cuatro operaciones requieren un JWT válido. Cualquier usuario autenticado p
 ```
 
 `PUT /api/ControladorRF/{id}` recibe esos mismos cuatro campos y reemplaza sus valores. El catálogo numérico de `edo` (activo, mantenimiento e inactivo) está pendiente de definición; por ello, la API acepta el entero recibido sin asignar aún significados ni restringir sus valores. Listados y detalles devuelven `idCtrlRF`, `numSerie`, `dirIP`, `nombre` y `edo`; un identificador inexistente produce `404`.
+
+### Medidores QP
+
+Cada registro de `MedidorQP` pertenece a exactamente un controlador, mediante `idCtrlRF`; un controlador puede tener varios medidores. El `idCtrlRF` enviado al crear o actualizar debe existir. No se permite borrar un controlador que tenga medidores asociados desde la relación configurada en Entity Framework.
+
+`POST /api/MedidoresQP` y `PUT /api/MedidoresQP/{id}` requieren JWT con rol `Administrador`. Ambos reciben `idCtrlRF`, `dirRed` (entero), `dirRF` (máximo 20 caracteres), `descripcion` (máximo 80), `edo` y `dirIP` (máximo 20). Los estados válidos son `10` en operación, `11` en uso, `0` fuera de operación y `20` en mantenimiento. El `idMedidor` se genera en la base de datos. El alta devuelve `201`; una referencia a controlador inexistente o estado inválido devuelve `400`, y un ID de medidor inexistente al actualizar devuelve `404`.
+
+Ejemplo del cuerpo para alta y actualización:
+
+```json
+{
+  "idCtrlRF": 1,
+  "dirRed": 25,
+  "dirRF": "RF-A25",
+  "descripcion": "Medidor de entrada",
+  "edo": 10,
+  "dirIP": "192.168.1.25"
+}
+```
 
 ### Iniciar sesión
 
@@ -123,7 +144,7 @@ Los usuarios se devuelven como DTO con `idUsuario`, `correo`, `nombreUsuario`, `
 - `Program.cs`: registra controladores, EF Core, servicios, JWT, CORS, Swagger y el orden de middlewares.
 - `Controllers/`: define rutas HTTP, códigos de respuesta y autorización; delega reglas a servicios.
 - `Services/`: implementa autenticación, administración de usuarios, generación de JWT y hash de contraseñas.
-- `Data/AppDbContext.cs`: contexto de Entity Framework y acceso a las entidades `Usuario` y `ControladorRF`.
+- `Data/AppDbContext.cs`: contexto de Entity Framework y relación entre `Usuario`, `ControladorRF` y `MedidorQP`.
 - `Modelos/`: entidad persistida, solicitudes de entrada y DTOs de respuesta.
 - `Tests/`: pruebas unitarias existentes para autenticación y servicios de usuarios.
 - `Tools/MigrateAdminPassword/`: herramienta auxiliar para migrar la contraseña de administrador.

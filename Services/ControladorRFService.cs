@@ -12,12 +12,16 @@ public class ControladorRFService : IControladorRFService
     /// <summary>Inicializa el servicio con el contexto de datos.</summary>
     public ControladorRFService(AppDbContext context) => _context = context;
 
-    /// <summary>Devuelve los controladores sin seguimiento de cambios.</summary>
-    public Task<List<ControladorRF>> GetAllAsync() => _context.ControladoresRF.AsNoTracking().ToListAsync();
+    /// <summary>Devuelve cada controlador con los medidores asociados, sin seguimiento de cambios.</summary>
+    public Task<List<ControladorRF>> GetAllAsync() => _context.ControladoresRF
+        .AsNoTracking()
+        .Include(c => c.Medidores)
+        .ToListAsync();
 
-    /// <summary>Devuelve el controlador solicitado o null si no existe.</summary>
+    /// <summary>Devuelve el controlador y sus medidores asociados, o null si no existe.</summary>
     public Task<ControladorRF?> GetByIdAsync(int id) =>
-        _context.ControladoresRF.AsNoTracking().FirstOrDefaultAsync(c => c.idCtrlRF == id);
+        _context.ControladoresRF.AsNoTracking().Include(c => c.Medidores)
+            .FirstOrDefaultAsync(c => c.idCtrlRF == id);
 
     /// <summary>Normaliza los textos y persiste un controlador nuevo; el identificador lo genera la base de datos.</summary>
     public async Task<ControladorRF> CreateAsync(ControladorRFRequest request)
