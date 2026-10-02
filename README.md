@@ -46,6 +46,7 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | Método y ruta | Acceso | Descripción |
 | --- | --- | --- |
 | `POST /api/Auth/login` | Público | Valida correo y contraseña; devuelve JWT e ID de usuario. |
+| `POST /api/Auth/renew` | Usuario autenticado | Renueva el JWT cuando quedan 60 segundos o menos. |
 | `GET /api/Users` | Administrador | Lista usuarios sin exponer hashes de contraseña. |
 | `GET /api/Users/admins` | Administrador | Lista solo usuarios con rol Administrador. |
 | `POST /api/Users` | Administrador | Crea un usuario con contraseña hasheada. Devuelve `201` y el DTO creado. |
@@ -118,6 +119,10 @@ Respuesta `200`:
 ```
 
 `expiresIn` se expresa en segundos y `expiresAtUtc` es la fecha de expiración UTC. Ambos valores y el claim `exp` del JWT se calculan con `Usuario.tiempoSesion` (en minutos) leído de la base al iniciar sesión. El frontend debe guardar `token` y enviarlo en las rutas protegidas como `Authorization: Bearer <token>`; puede usar `expiresAtUtc` para cerrar la sesión visualmente, pero el servidor siempre valida la expiración firmada del JWT. Si se cambia `tiempoSesion`, el cambio aplica al siguiente inicio de sesión; los tokens ya emitidos conservan su vencimiento original.
+
+### Renovar el token
+
+El cliente puede llamar a `POST /api/Auth/renew` cuando llegue a `expiresAtUtc - 60 segundos`, enviando el token todavía vigente en `Authorization: Bearer <jwt>`. La API solo acepta la renovación cuando resta un minuto o menos; si se solicita antes devuelve `400`. Si el token ya venció, la autenticación responde `401` y el usuario debe iniciar sesión de nuevo. La cuenta se consulta nuevamente y debe seguir activa. La respuesta `200` usa el mismo formato que el login y contiene un JWT nuevo con vigencia basada en el `tiempoSesion` actual. El frontend debe reemplazar el token guardado por el nuevo.
 
 Las credenciales inválidas y las cuentas inactivas devuelven `401`. Los campos requeridos, formato de correo y mínimo de 8 caracteres se validan automáticamente y producen `400` si no son válidos.
 

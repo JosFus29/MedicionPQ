@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using MedicionPQ.Modelos;
 using MedicionPQ.Services;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace MedicionPQ.Controllers;
 
@@ -55,5 +58,42 @@ public class AuthController : ControllerBase
         };
 
         return Ok(response);
+    }
+
+    /// <summary>Renueva el JWT si al token vigente le resta un minuto o menos y la cuenta sigue activa.</summary>
+    [HttpPost("renew")]
+    [Authorize]
+    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Renew()
+    {
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(idClaim, out var idUsuario))
+            return Unauthorized(new { mensaje = "El token no contiene una identidad o expiración válida." });
+
+        // La autenticación Bearer ya validó este JWT; se lee su exp firmado para medir el tiempo restante.
+        var authorization = Request.Headers.Authorization.ToString();
+        if (!authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            return Unauthorized(new { mensaje = "No se encontró el token Bearer." });
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(authorization["Bearer ".Length..]);
+        var expiresAtUtc = new DateTimeOffset(jwt.ValidTo, TimeSpan.Zero);
+        if (expiresAtUtc - DateTimeOffset.UtcNow > TimeSpan.FromMinutes(1))
+            return BadRequest(new { mensaje = "La renovación estará disponible cuando reste un minuto o menos de sesión." });
+
+        var resultado = await _authService.RenovarTokenAsync(idUsuario);
+        if (!resultado.Exito)
+            return Unauthorized(new { mensaje = resultado.Mensaje });
+
+        var token = resultado.Token!;
+        return Ok(new LoginResponse
+        {
+            Mensaje = resultado.Mensaje,
+            Token = token.Token,
+            TokenType = "Bearer",
+            ExpiresIn = token.ExpiresIn,
+            ExpiresAtUtc = token.ExpiresAtUtc,
+            IdUsuario = resultado.UsuarioInfo!.idUsuario
+        });
     }
 }
