@@ -13,4 +13,12 @@ public interface IMedidorService
     /// Obtiene todos los medidores registrados en la base de datos.
     /// </summary>
     Task<List<Medidor>> GetAllAsync();
+
+    /// <summary>
+    /// Crea un nuevo medidor en la base de datos, ejecutando el procedimiento
+    /// almacenado sp_CrearMedidor.
+    /// </summary>
+    /// <param name="medidor">Datos del medidor a crear (sin Id, se asigna automáticamente).</param>
+    /// <returns>El medidor creado, incluyendo el Id asignado.</returns>
+    Task<Medidor> CreateAsync(Medidor medidor);
 }
