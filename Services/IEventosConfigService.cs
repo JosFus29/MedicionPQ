@@ -17,6 +17,4 @@ public interface IEventosConfigService
     /// <summary>Reemplaza los campos editables de un evento existente.</summary>
     Task<EventosConfig?> UpdateAsync(int id, EventosConfigRequest request);
 
-    /// <summary>Elimina el evento indicado; devuelve false cuando no existe.</summary>
-    Task<bool> DeleteAsync(int id);
 }

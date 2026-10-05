@@ -19,6 +19,6 @@ public class Unidad
     [Required, StringLength(50)]
     public string nombre { get; set; } = string.Empty;
 
-    /// <summary>Indicador booleano de estado; su significado funcional está pendiente de definir.</summary>
+    /// <summary>Indicador de estado: true se almacena como 1 (activo) y false como 0 (inactivo).</summary>
     public bool edo { get; set; }
 }

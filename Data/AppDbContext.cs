@@ -29,9 +29,16 @@ public class AppDbContext : DbContext
     /// <summary>Conjunto de unidades asociado a la tabla existente <c>Unidades</c>.</summary>
     public DbSet<Unidad> Unidades { get; set; }
 
+    /// <summary>Conjunto de registros asociado a la tabla <c>EventosReg</c>.</summary>
+    public DbSet<EventosReg> EventosReg { get; set; }
+
     /// <summary>Configura la relación de muchos medidores hacia un único controlador RF.</summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // La tabla identifica cada registro combinando el medidor, controlador y tipo de evento.
+        modelBuilder.Entity<EventosReg>()
+            .HasKey(registro => new { registro.idMedidor, registro.idCtrlRF, registro.idEvento });
+
         modelBuilder.Entity<MedidorQP>()
             .HasOne<ControladorRF>()
             .WithMany(controlador => controlador.Medidores)

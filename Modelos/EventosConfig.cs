@@ -18,7 +18,7 @@ public class EventosConfig
     /// <summary>Número que identifica el tipo de evento.</summary>
     public int numEvento { get; set; }
 
-    /// <summary>Indicador booleano de estado; su significado funcional está pendiente de definir.</summary>
+    /// <summary>Indicador de estado: true se almacena como 1 (activo) y false como 0 (inactivo).</summary>
     public bool edo { get; set; }
 
     /// <summary>Identificador de la unidad asociada al evento.</summary>

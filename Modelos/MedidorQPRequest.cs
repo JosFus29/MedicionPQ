@@ -19,7 +19,7 @@ public class MedidorQPRequest
     [Required, StringLength(80)]
     public string Descripcion { get; set; } = string.Empty;
 
-    /// <summary>Estado permitido: 10, 11, 0 o 20.</summary>
+    /// <summary>Estado entero del medidor: 10 activo, 11 en uso o 20 inactivo.</summary>
     public int Edo { get; set; }
 
     /// <summary>Dirección IP de hasta 20 caracteres.</summary>

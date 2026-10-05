@@ -17,6 +17,4 @@ public interface IUnidadService
     /// <summary>Actualiza los campos editables de una unidad existente.</summary>
     Task<Unidad?> UpdateAsync(int id, UnidadRequest request);
 
-    /// <summary>Elimina la unidad indicada; devuelve false si no existe.</summary>
-    Task<bool> DeleteAsync(int id);
 }

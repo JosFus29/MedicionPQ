@@ -12,7 +12,7 @@ public class EventosConfigRequest
     /// <summary>Número que identifica el tipo de evento.</summary>
     public int NumEvento { get; set; }
 
-    /// <summary>Valor booleano almacenado en edo; no se asigna significado a true o false.</summary>
+    /// <summary>Estado: true (1) activo o false (0) inactivo.</summary>
     public bool Edo { get; set; }
 
     /// <summary>Identificador de la unidad asociada al evento.</summary>

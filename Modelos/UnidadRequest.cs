@@ -13,6 +13,6 @@ public class UnidadRequest
     [Required, StringLength(50)]
     public string Nombre { get; set; } = string.Empty;
 
-    /// <summary>Valor booleano almacenado en edo, sin asignar significado a true o false.</summary>
+    /// <summary>Estado: true (1) activo o false (0) inactivo.</summary>
     public bool Edo { get; set; }
 }

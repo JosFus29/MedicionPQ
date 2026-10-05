@@ -54,6 +54,8 @@ builder.Services.AddScoped<IMedidorQPService, MedidorQPService>();
 builder.Services.AddScoped<IEventosConfigService, EventosConfigService>();
 // Servicio para consultar y administrar el catálogo de unidades.
 builder.Services.AddScoped<IUnidadService, UnidadService>();
+// Servicio para consultar y administrar los registros de eventos.
+builder.Services.AddScoped<IEventosRegService, EventosRegService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<TokenService>();
 

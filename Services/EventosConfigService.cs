@@ -41,17 +41,6 @@ public class EventosConfigService : IEventosConfigService
         return evento;
     }
 
-    /// <summary>Elimina exclusivamente el evento con el ID indicado.</summary>
-    public async Task<bool> DeleteAsync(int id)
-    {
-        var evento = await _context.EventosConfig.FirstOrDefaultAsync(e => e.idEvento == id);
-        if (evento is null) return false;
-
-        _context.EventosConfig.Remove(evento);
-        await _context.SaveChangesAsync();
-        return true;
-    }
-
     /// <summary>Copia los valores editables de la solicitud sin cambiar el identificador del evento.</summary>
     private static void Apply(EventosConfig evento, EventosConfigRequest request)
     {

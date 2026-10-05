@@ -17,6 +17,6 @@ public class ControladorRFRequest
     [Required, StringLength(50)]
     public string Nombre { get; set; } = string.Empty;
 
-    /// <summary>Valor de estado según el catálogo vigente en la base de datos.</summary>
+    /// <summary>Estado entero del controlador: 10 activo, 11 en uso o 20 inactivo.</summary>
     public int Edo { get; set; }
 }

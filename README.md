@@ -61,12 +61,14 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | `GET /api/EventosConfig/{id}` | Usuario autenticado | Consulta el detalle de un evento. |
 | `POST /api/EventosConfig` | Administrador | Agrega un evento y devuelve `201`. |
 | `PUT /api/EventosConfig/{id}` | Administrador | Actualiza los datos de un evento. |
-| `DELETE /api/EventosConfig/{id}` | Administrador | Elimina el evento indicado. |
 | `GET /api/Unidades` | Usuario autenticado | Lista las unidades. |
 | `GET /api/Unidades/{id}` | Usuario autenticado | Consulta el detalle de una unidad. |
 | `POST /api/Unidades` | Administrador | Agrega una unidad y devuelve `201`. |
 | `PUT /api/Unidades/{id}` | Administrador | Actualiza los datos de una unidad. |
-| `DELETE /api/Unidades/{id}` | Administrador | Elimina la unidad indicada. |
+| `GET /api/EventosReg` | Usuario autenticado | Lista los registros de eventos. |
+| `GET /api/EventosReg/{idMedidor}/{idCtrlRF}/{idEvento}` | Usuario autenticado | Consulta un registro por su clave compuesta. |
+| `POST /api/EventosReg` | Administrador | Agrega un registro de evento. |
+| `PUT /api/EventosReg/{idMedidor}/{idCtrlRF}/{idEvento}` | Administrador | Actualiza fecha y consumo del registro. |
 
 ### Controladores RF
 
@@ -79,17 +81,17 @@ Las operaciones de controladores requieren un JWT válido. Cualquier usuario aut
   "numSerie": "RF-0001",
   "dirIP": "192.168.1.20",
   "nombre": "Controlador principal",
-  "edo": 1
+  "edo": 10
 }
 ```
 
-`PUT /api/ControladorRF/{id}` recibe esos mismos cuatro campos y reemplaza sus valores. El catálogo numérico de `edo` (activo, mantenimiento e inactivo) está pendiente de definición; por ello, la API acepta el entero recibido sin asignar aún significados ni restringir sus valores. Listados y detalles devuelven `idCtrlRF`, `numSerie`, `dirIP`, `nombre` y `edo`; un identificador inexistente produce `404`.
+`PUT /api/ControladorRF/{id}` recibe esos mismos cuatro campos y reemplaza sus valores. `edo` es entero: `10` activo, `11` en uso o `20` inactivo. Para inactivar un controlador, el administrador lo actualiza con `edo: 20`; para activarlo, usa `edo: 10`. Listados y detalles devuelven `idCtrlRF`, `numSerie`, `dirIP`, `nombre` y `edo`; un identificador inexistente produce `404`.
 
 ### Medidores QP
 
 Cada registro de `MedidorQP` pertenece a exactamente un controlador, mediante `idCtrlRF`; un controlador puede tener varios medidores. El `idCtrlRF` enviado al crear o actualizar debe existir. No se permite borrar un controlador que tenga medidores asociados desde la relación configurada en Entity Framework.
 
-`POST /api/MedidoresQP` y `PUT /api/MedidoresQP/{id}` requieren JWT con rol `Administrador`. Ambos reciben `idCtrlRF`, `dirRed` (entero), `dirRF` (máximo 20 caracteres), `descripcion` (máximo 80), `edo` y `dirIP` (máximo 20). Los estados válidos son `10` en operación, `11` en uso, `0` fuera de operación y `20` en mantenimiento. El `idMedidor` se genera en la base de datos. El alta devuelve `201`; una referencia a controlador inexistente o estado inválido devuelve `400`, y un ID de medidor inexistente al actualizar devuelve `404`.
+`POST /api/MedidoresQP` y `PUT /api/MedidoresQP/{id}` requieren JWT con rol `Administrador`. Ambos reciben `idCtrlRF`, `dirRed` (entero), `dirRF` (máximo 20 caracteres), `descripcion` (máximo 80), `edo` (`10` activo, `11` en uso o `20` inactivo) y `dirIP` (máximo 20). Para inactivar un medidor sin borrar el registro, el administrador lo actualiza con `edo: 20`; para activarlo, usa `edo: 10`. El `idMedidor` se genera en la base de datos. El alta devuelve `201`; una referencia a controlador inexistente o estado inválido devuelve `400`, y un ID de medidor inexistente al actualizar devuelve `404`.
 
 Ejemplo del cuerpo para alta y actualización:
 
@@ -106,9 +108,9 @@ Ejemplo del cuerpo para alta y actualización:
 
 ### Eventos configurables
 
-La API se conecta a la tabla existente `EventosConfig`; las operaciones de lectura no modifican los datos almacenados. Cualquier usuario autenticado puede listar (`GET /api/EventosConfig`) y consultar por `idEvento` (`GET /api/EventosConfig/{id}`). Solo el rol `Administrador` puede agregar, editar o eliminar. Las modificaciones y eliminaciones buscan primero el registro por el ID de la ruta, y devuelven `404` si no existe.
+La API se conecta a la tabla existente `EventosConfig`; las operaciones de lectura no modifican los datos almacenados. Cualquier usuario autenticado puede listar (`GET /api/EventosConfig`) y consultar por `idEvento` (`GET /api/EventosConfig/{id}`). Solo el rol `Administrador` puede agregar, editar o dar de baja/reactivar eventos. Las actualizaciones buscan primero el registro por el ID de la ruta y devuelven `404` si no existe.
 
-El alta (`POST /api/EventosConfig`) y la actualización (`PUT /api/EventosConfig/{id}`) reciben `descripcion` (máximo 100 caracteres), `numEvento` (entero), `edo` (booleano JSON `true`/`false`) e `idUnidad` (entero). Como el significado de los valores de `edo` no está definido, se conserva el booleano sin asignar semántica a `true` o `false`. `idEvento` se trata como clave primaria generada por la base de datos y no se incluye en el cuerpo. No se configura una relación para `idUnidad` porque aún no se ha especificado su tabla relacionada.
+El alta (`POST /api/EventosConfig`) y la actualización (`PUT /api/EventosConfig/{id}`) reciben `descripcion` (máximo 100 caracteres), `numEvento` (entero), `edo` (booleano JSON) e `idUnidad` (entero). En `edo`, `true` representa activo (`1`) y `false` inactivo (`0`). Para quitar el evento de uso se actualiza con `edo: false`; el registro permanece guardado y puede reactivarse con `edo: true`. `idEvento` se trata como clave primaria generada por la base de datos y no se incluye en el cuerpo. No se configura una relación para `idUnidad` porque aún no se ha especificado su tabla relacionada.
 
 Ejemplo de solicitud:
 
@@ -121,13 +123,13 @@ Ejemplo de solicitud:
 }
 ```
 
-La eliminación (`DELETE /api/EventosConfig/{id}`) responde `204` cuando borra el registro y `404` si el ID no existe. Las rutas de escritura requieren JWT con rol `Administrador`; los demás usuarios autenticados reciben `403`.
+Las rutas de escritura requieren JWT con rol `Administrador`; los demás usuarios autenticados reciben `403`. No existe eliminación física para esta tabla.
 
 ### Unidades
 
-La API consulta la tabla existente `Unidades`. Cualquier usuario autenticado puede listar (`GET /api/Unidades`) y consultar una unidad por `idUnidad` (`GET /api/Unidades/{id}`). Solo el rol `Administrador` puede agregar, editar o eliminar; las operaciones por ID devuelven `404` si la unidad no existe.
+La API consulta la tabla existente `Unidades`. Cualquier usuario autenticado puede listar (`GET /api/Unidades`) y consultar una unidad por `idUnidad` (`GET /api/Unidades/{id}`). Solo el rol `Administrador` puede agregar, editar o dar de baja/reactivar; las actualizaciones por ID devuelven `404` si la unidad no existe.
 
-El alta (`POST /api/Unidades`) y la actualización (`PUT /api/Unidades/{id}`) reciben `simbolo` (máximo 10 caracteres), `nombre` (máximo 50) y `edo` (booleano JSON `true`/`false`). Como el significado del estado aún no está definido, se conserva el booleano sin interpretar sus valores. `idUnidad` se trata como clave primaria generada por la base de datos y no se incluye en el cuerpo.
+El alta (`POST /api/Unidades`) y la actualización (`PUT /api/Unidades/{id}`) reciben `simbolo` (máximo 10 caracteres), `nombre` (máximo 50) y `edo` (booleano JSON). `true` representa activo (`1`) y `false` inactivo (`0`). Para quitar una unidad de uso se actualiza con `edo: false`; el registro permanece guardado y puede reactivarse con `edo: true`. `idUnidad` se trata como clave primaria generada por la base de datos y no se incluye en el cuerpo.
 
 Ejemplo de solicitud:
 
@@ -139,7 +141,34 @@ Ejemplo de solicitud:
 }
 ```
 
-La eliminación (`DELETE /api/Unidades/{id}`) devuelve `204` al borrar y `404` cuando el ID no existe. Si existen restricciones de clave foránea desde otras tablas, SQL Server impedirá eliminar unidades referenciadas.
+No existe eliminación física de unidades. El administrador las da de baja usando `edo: false` en `PUT /api/Unidades/{id}`; si la unidad está referenciada, se conserva junto con los datos relacionados.
+
+### Registros de eventos
+
+La API consulta la tabla existente `EventosReg`. Cualquier usuario autenticado puede listar (`GET /api/EventosReg`) y consultar el detalle mediante los tres componentes de la clave: `idMedidor`, `idCtrlRF` e `idEvento`. Solo el rol `Administrador` puede agregar o editar; un registro no encontrado devuelve `404`.
+
+El alta (`POST /api/EventosReg`) recibe los tres IDs de la clave compuesta, `fecha` como fecha ISO (`yyyy-MM-dd`) y `consumo` como número. El tipo CLR `double` representa el tipo SQL Server `float` de doble precisión. En la edición (`PUT /api/EventosReg/{idMedidor}/{idCtrlRF}/{idEvento}`), la clave permanece inmutable y el cuerpo contiene solamente `fecha` y `consumo`. Esta tabla no tiene campo `edo`, por lo que no ofrece baja lógica; tampoco expone eliminación física.
+
+Ejemplo de alta:
+
+```json
+{
+  "idMedidor": 4,
+  "idCtrlRF": 2,
+  "idEvento": 8,
+  "fecha": "2026-10-05",
+  "consumo": 125.75
+}
+```
+
+Ejemplo de cuerpo para edición:
+
+```json
+{
+  "fecha": "2026-10-06",
+  "consumo": 128.5
+}
+```
 
 ### Iniciar sesión
 
@@ -196,7 +225,7 @@ Los usuarios se devuelven como DTO con `idUsuario`, `correo`, `nombreUsuario`, `
 - `Program.cs`: registra controladores, EF Core, servicios, JWT, CORS, Swagger y el orden de middlewares.
 - `Controllers/`: define rutas HTTP, códigos de respuesta y autorización; delega reglas a servicios.
 - `Services/`: implementa autenticación, administración de usuarios, generación de JWT y hash de contraseñas.
-- `Data/AppDbContext.cs`: contexto de Entity Framework y entidades `Usuario`, `ControladorRF`, `MedidorQP`, `EventosConfig` y `Unidad`.
+- `Data/AppDbContext.cs`: contexto de Entity Framework y entidades `Usuario`, `ControladorRF`, `MedidorQP`, `EventosConfig`, `Unidad` y `EventosReg`.
 - `Modelos/`: entidad persistida, solicitudes de entrada y DTOs de respuesta.
 - `Tests/`: pruebas unitarias existentes para autenticación y servicios de usuarios.
 - `Tools/MigrateAdminPassword/`: herramienta auxiliar para migrar la contraseña de administrador.

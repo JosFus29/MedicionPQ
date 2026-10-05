@@ -46,12 +46,4 @@ public class EventosConfigController : ControllerBase
         return evento is null ? NotFound(new { mensaje = "Evento no encontrado." }) : Ok(evento);
     }
 
-    /// <summary>Elimina por ID un evento existente; solo el rol Administrador puede borrarlo.</summary>
-    [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var eliminado = await _service.DeleteAsync(id);
-        return eliminado ? NoContent() : NotFound(new { mensaje = "Evento no encontrado." });
-    }
 }

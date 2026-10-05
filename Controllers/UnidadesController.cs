@@ -46,12 +46,4 @@ public class UnidadesController : ControllerBase
         return unidad is null ? NotFound(new { mensaje = "Unidad no encontrada." }) : Ok(unidad);
     }
 
-    /// <summary>Elimina una unidad por ID; solo el rol Administrador puede borrarla.</summary>
-    [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var eliminado = await _service.DeleteAsync(id);
-        return eliminado ? NoContent() : NotFound(new { mensaje = "Unidad no encontrada." });
-    }
 }

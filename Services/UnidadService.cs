@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MedicionPQ.Services;
 
-/// <summary>Implementa la consulta, creación, edición y eliminación de unidades.</summary>
+/// <summary>Implementa la consulta, creación y edición de unidades.</summary>
 public class UnidadService : IUnidadService
 {
     private readonly AppDbContext _context;
@@ -38,17 +38,6 @@ public class UnidadService : IUnidadService
         Apply(unidad, request);
         await _context.SaveChangesAsync();
         return unidad;
-    }
-
-    /// <summary>Elimina exclusivamente la unidad identificada por el ID recibido.</summary>
-    public async Task<bool> DeleteAsync(int id)
-    {
-        var unidad = await _context.Unidades.FirstOrDefaultAsync(u => u.idUnidad == id);
-        if (unidad is null) return false;
-
-        _context.Unidades.Remove(unidad);
-        await _context.SaveChangesAsync();
-        return true;
     }
 
     /// <summary>Copia los campos editables sin modificar el ID de la unidad.</summary>

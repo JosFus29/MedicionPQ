@@ -23,7 +23,7 @@ public class ControladorRF
     [Required, StringLength(50)]
     public string nombre { get; set; } = string.Empty;
 
-    /// <summary>Estado numérico definido por el catálogo de la base de datos.</summary>
+    /// <summary>Estado entero: 10 activo, 11 en uso o 20 inactivo.</summary>
     public int edo { get; set; }
 
     /// <summary>Medidores asociados a este controlador; la relación permite varios medidores.</summary>
