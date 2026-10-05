@@ -52,6 +52,8 @@ builder.Services.AddScoped<IControladorRFService, ControladorRFService>();
 builder.Services.AddScoped<IMedidorQPService, MedidorQPService>();
 // Servicio para consultar, agregar, editar y eliminar eventos configurables.
 builder.Services.AddScoped<IEventosConfigService, EventosConfigService>();
+// Servicio para consultar y administrar el catálogo de unidades.
+builder.Services.AddScoped<IUnidadService, UnidadService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<TokenService>();
 

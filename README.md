@@ -62,6 +62,11 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | `POST /api/EventosConfig` | Administrador | Agrega un evento y devuelve `201`. |
 | `PUT /api/EventosConfig/{id}` | Administrador | Actualiza los datos de un evento. |
 | `DELETE /api/EventosConfig/{id}` | Administrador | Elimina el evento indicado. |
+| `GET /api/Unidades` | Usuario autenticado | Lista las unidades. |
+| `GET /api/Unidades/{id}` | Usuario autenticado | Consulta el detalle de una unidad. |
+| `POST /api/Unidades` | Administrador | Agrega una unidad y devuelve `201`. |
+| `PUT /api/Unidades/{id}` | Administrador | Actualiza los datos de una unidad. |
+| `DELETE /api/Unidades/{id}` | Administrador | Elimina la unidad indicada. |
 
 ### Controladores RF
 
@@ -118,6 +123,24 @@ Ejemplo de solicitud:
 
 La eliminación (`DELETE /api/EventosConfig/{id}`) responde `204` cuando borra el registro y `404` si el ID no existe. Las rutas de escritura requieren JWT con rol `Administrador`; los demás usuarios autenticados reciben `403`.
 
+### Unidades
+
+La API consulta la tabla existente `Unidades`. Cualquier usuario autenticado puede listar (`GET /api/Unidades`) y consultar una unidad por `idUnidad` (`GET /api/Unidades/{id}`). Solo el rol `Administrador` puede agregar, editar o eliminar; las operaciones por ID devuelven `404` si la unidad no existe.
+
+El alta (`POST /api/Unidades`) y la actualización (`PUT /api/Unidades/{id}`) reciben `simbolo` (máximo 10 caracteres), `nombre` (máximo 50) y `edo` (booleano JSON `true`/`false`). Como el significado del estado aún no está definido, se conserva el booleano sin interpretar sus valores. `idUnidad` se trata como clave primaria generada por la base de datos y no se incluye en el cuerpo.
+
+Ejemplo de solicitud:
+
+```json
+{
+  "simbolo": "kW",
+  "nombre": "Kilowatt",
+  "edo": true
+}
+```
+
+La eliminación (`DELETE /api/Unidades/{id}`) devuelve `204` al borrar y `404` cuando el ID no existe. Si existen restricciones de clave foránea desde otras tablas, SQL Server impedirá eliminar unidades referenciadas.
+
 ### Iniciar sesión
 
 Solicitud:
@@ -173,7 +196,7 @@ Los usuarios se devuelven como DTO con `idUsuario`, `correo`, `nombreUsuario`, `
 - `Program.cs`: registra controladores, EF Core, servicios, JWT, CORS, Swagger y el orden de middlewares.
 - `Controllers/`: define rutas HTTP, códigos de respuesta y autorización; delega reglas a servicios.
 - `Services/`: implementa autenticación, administración de usuarios, generación de JWT y hash de contraseñas.
-- `Data/AppDbContext.cs`: contexto de Entity Framework y entidades `Usuario`, `ControladorRF`, `MedidorQP` y `EventosConfig`.
+- `Data/AppDbContext.cs`: contexto de Entity Framework y entidades `Usuario`, `ControladorRF`, `MedidorQP`, `EventosConfig` y `Unidad`.
 - `Modelos/`: entidad persistida, solicitudes de entrada y DTOs de respuesta.
 - `Tests/`: pruebas unitarias existentes para autenticación y servicios de usuarios.
 - `Tools/MigrateAdminPassword/`: herramienta auxiliar para migrar la contraseña de administrador.

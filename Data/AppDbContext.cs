@@ -26,6 +26,9 @@ public class AppDbContext : DbContext
     /// <summary>Conjunto de eventos configurables asociado a la tabla existente <c>EventosConfig</c>.</summary>
     public DbSet<EventosConfig> EventosConfig { get; set; }
 
+    /// <summary>Conjunto de unidades asociado a la tabla existente <c>Unidades</c>.</summary>
+    public DbSet<Unidad> Unidades { get; set; }
+
     /// <summary>Configura la relación de muchos medidores hacia un único controlador RF.</summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
