@@ -50,6 +50,8 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IControladorRFService, ControladorRFService>();
 // Servicio para validar la relación con ControladorRF y guardar medidores QP.
 builder.Services.AddScoped<IMedidorQPService, MedidorQPService>();
+// Servicio para consultar, agregar, editar y eliminar eventos configurables.
+builder.Services.AddScoped<IEventosConfigService, EventosConfigService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<TokenService>();
 

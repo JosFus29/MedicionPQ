@@ -57,6 +57,11 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | `PUT /api/ControladorRF/{id}` | Administrador | Actualiza los datos de un controlador RF. |
 | `POST /api/MedidoresQP` | Administrador | Registra un medidor asociado a un controlador RF. |
 | `PUT /api/MedidoresQP/{id}` | Administrador | Actualiza todos los campos editables de un medidor. |
+| `GET /api/EventosConfig` | Usuario autenticado | Lista los eventos configurados. |
+| `GET /api/EventosConfig/{id}` | Usuario autenticado | Consulta el detalle de un evento. |
+| `POST /api/EventosConfig` | Administrador | Agrega un evento y devuelve `201`. |
+| `PUT /api/EventosConfig/{id}` | Administrador | Actualiza los datos de un evento. |
+| `DELETE /api/EventosConfig/{id}` | Administrador | Elimina el evento indicado. |
 
 ### Controladores RF
 
@@ -93,6 +98,25 @@ Ejemplo del cuerpo para alta y actualización:
   "dirIP": "192.168.1.25"
 }
 ```
+
+### Eventos configurables
+
+La API se conecta a la tabla existente `EventosConfig`; las operaciones de lectura no modifican los datos almacenados. Cualquier usuario autenticado puede listar (`GET /api/EventosConfig`) y consultar por `idEvento` (`GET /api/EventosConfig/{id}`). Solo el rol `Administrador` puede agregar, editar o eliminar. Las modificaciones y eliminaciones buscan primero el registro por el ID de la ruta, y devuelven `404` si no existe.
+
+El alta (`POST /api/EventosConfig`) y la actualización (`PUT /api/EventosConfig/{id}`) reciben `descripcion` (máximo 100 caracteres), `numEvento` (entero), `edo` (booleano JSON `true`/`false`) e `idUnidad` (entero). Como el significado de los valores de `edo` no está definido, se conserva el booleano sin asignar semántica a `true` o `false`. `idEvento` se trata como clave primaria generada por la base de datos y no se incluye en el cuerpo. No se configura una relación para `idUnidad` porque aún no se ha especificado su tabla relacionada.
+
+Ejemplo de solicitud:
+
+```json
+{
+  "descripcion": "Evento de ejemplo",
+  "numEvento": 5,
+  "edo": true,
+  "idUnidad": 2
+}
+```
+
+La eliminación (`DELETE /api/EventosConfig/{id}`) responde `204` cuando borra el registro y `404` si el ID no existe. Las rutas de escritura requieren JWT con rol `Administrador`; los demás usuarios autenticados reciben `403`.
 
 ### Iniciar sesión
 
@@ -149,7 +173,7 @@ Los usuarios se devuelven como DTO con `idUsuario`, `correo`, `nombreUsuario`, `
 - `Program.cs`: registra controladores, EF Core, servicios, JWT, CORS, Swagger y el orden de middlewares.
 - `Controllers/`: define rutas HTTP, códigos de respuesta y autorización; delega reglas a servicios.
 - `Services/`: implementa autenticación, administración de usuarios, generación de JWT y hash de contraseñas.
-- `Data/AppDbContext.cs`: contexto de Entity Framework y relación entre `Usuario`, `ControladorRF` y `MedidorQP`.
+- `Data/AppDbContext.cs`: contexto de Entity Framework y entidades `Usuario`, `ControladorRF`, `MedidorQP` y `EventosConfig`.
 - `Modelos/`: entidad persistida, solicitudes de entrada y DTOs de respuesta.
 - `Tests/`: pruebas unitarias existentes para autenticación y servicios de usuarios.
 - `Tools/MigrateAdminPassword/`: herramienta auxiliar para migrar la contraseña de administrador.

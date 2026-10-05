@@ -23,6 +23,9 @@ public class AppDbContext : DbContext
     /// <summary>Conjunto de medidores QP asociado a la tabla <c>MedidorQP</c>.</summary>
     public DbSet<MedidorQP> MedidoresQP { get; set; }
 
+    /// <summary>Conjunto de eventos configurables asociado a la tabla existente <c>EventosConfig</c>.</summary>
+    public DbSet<EventosConfig> EventosConfig { get; set; }
+
     /// <summary>Configura la relación de muchos medidores hacia un único controlador RF.</summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
