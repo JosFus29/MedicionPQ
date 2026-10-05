@@ -66,9 +66,9 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | `POST /api/Unidades` | Administrador | Agrega una unidad y devuelve `201`. |
 | `PUT /api/Unidades/{id}` | Administrador | Actualiza los datos de una unidad. |
 | `GET /api/EventosReg` | Usuario autenticado | Lista los registros de eventos. |
-| `GET /api/EventosReg/{idMedidor}/{idCtrlRF}/{idEvento}` | Usuario autenticado | Consulta un registro por su clave compuesta. |
+| `GET /api/EventosReg/{idMedidor}/{idCtrlRF}/{idEvento}/{fecha}` | Usuario autenticado | Consulta un registro por su clave compuesta. |
 | `POST /api/EventosReg` | Administrador | Agrega un registro de evento. |
-| `PUT /api/EventosReg/{idMedidor}/{idCtrlRF}/{idEvento}` | Administrador | Actualiza fecha y consumo del registro. |
+| `PUT /api/EventosReg/{idMedidor}/{idCtrlRF}/{idEvento}/{fecha}` | Administrador | Actualiza el consumo del registro. |
 
 ### Controladores RF
 
@@ -129,7 +129,7 @@ Las rutas de escritura requieren JWT con rol `Administrador`; los demás usuario
 
 La API consulta la tabla existente `Unidades`. Cualquier usuario autenticado puede listar (`GET /api/Unidades`) y consultar una unidad por `idUnidad` (`GET /api/Unidades/{id}`). Solo el rol `Administrador` puede agregar, editar o dar de baja/reactivar; las actualizaciones por ID devuelven `404` si la unidad no existe.
 
-El alta (`POST /api/Unidades`) y la actualización (`PUT /api/Unidades/{id}`) reciben `simbolo` (máximo 10 caracteres), `nombre` (máximo 50) y `edo` (booleano JSON). `true` representa activo (`1`) y `false` inactivo (`0`). Para quitar una unidad de uso se actualiza con `edo: false`; el registro permanece guardado y puede reactivarse con `edo: true`. `idUnidad` se trata como clave primaria generada por la base de datos y no se incluye en el cuerpo.
+El alta (`POST /api/Unidades`) y la actualización (`PUT /api/Unidades/{id}`) reciben `simbolo` (máximo 10 caracteres), `nombre` (máximo 50) y `edo` (booleano JSON). `simbolo` puede ser `null` en registros ya guardados; para altas y actualizaciones se requiere un texto. `true` representa activo (`1`) y `false` inactivo (`0`). Para quitar una unidad de uso se actualiza con `edo: false`; el registro permanece guardado y puede reactivarse con `edo: true`. `idUnidad` se trata como clave primaria generada por la base de datos y no se incluye en el cuerpo.
 
 Ejemplo de solicitud:
 
@@ -145,9 +145,9 @@ No existe eliminación física de unidades. El administrador las da de baja usan
 
 ### Registros de eventos
 
-La API consulta la tabla existente `EventosReg`. Cualquier usuario autenticado puede listar (`GET /api/EventosReg`) y consultar el detalle mediante los tres componentes de la clave: `idMedidor`, `idCtrlRF` e `idEvento`. Solo el rol `Administrador` puede agregar o editar; un registro no encontrado devuelve `404`.
+La API consulta la tabla existente `EventosReg`. Cualquier usuario autenticado puede listar (`GET /api/EventosReg`) y consultar el detalle mediante los cuatro componentes de la clave: `idMedidor`, `idCtrlRF`, `idEvento` y `fecha`. Solo el rol `Administrador` puede agregar o editar; un registro no encontrado devuelve `404`.
 
-El alta (`POST /api/EventosReg`) recibe los tres IDs de la clave compuesta, `fecha` como fecha ISO (`yyyy-MM-dd`) y `consumo` como número. El tipo CLR `double` representa el tipo SQL Server `float` de doble precisión. En la edición (`PUT /api/EventosReg/{idMedidor}/{idCtrlRF}/{idEvento}`), la clave permanece inmutable y el cuerpo contiene solamente `fecha` y `consumo`. Esta tabla no tiene campo `edo`, por lo que no ofrece baja lógica; tampoco expone eliminación física.
+El alta (`POST /api/EventosReg`) recibe los tres IDs y `fecha` como fecha ISO (`yyyy-MM-dd`), que juntos forman la clave, además de `consumo` como número. El tipo CLR `double` representa el tipo SQL Server `float` de doble precisión. Para consultar se usa `GET /api/EventosReg/{idMedidor}/{idCtrlRF}/{idEvento}/{fecha}`. En la edición (`PUT` con esa misma ruta), la clave permanece inmutable y el cuerpo contiene solamente `consumo`. Esta tabla no tiene campo `edo`, por lo que no ofrece baja lógica; tampoco expone eliminación física.
 
 Ejemplo de alta:
 

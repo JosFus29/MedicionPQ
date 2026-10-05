@@ -16,10 +16,10 @@ public class EventosRegService : IEventosRegService
     public Task<List<EventosReg>> GetAllAsync() =>
         _context.EventosReg.AsNoTracking().ToListAsync();
 
-    /// <summary>Busca un registro usando medidor, controlador y evento.</summary>
-    public Task<EventosReg?> GetByIdAsync(int idMedidor, int idCtrlRF, int idEvento) =>
+    /// <summary>Busca un registro usando medidor, controlador, evento y fecha.</summary>
+    public Task<EventosReg?> GetByIdAsync(int idMedidor, int idCtrlRF, int idEvento, DateOnly fecha) =>
         _context.EventosReg.AsNoTracking().FirstOrDefaultAsync(e =>
-            e.idMedidor == idMedidor && e.idCtrlRF == idCtrlRF && e.idEvento == idEvento);
+            e.idMedidor == idMedidor && e.idCtrlRF == idCtrlRF && e.idEvento == idEvento && e.fecha == fecha);
 
     /// <summary>Crea un registro con la clave compuesta indicada por el cliente.</summary>
     public async Task<EventosReg> CreateAsync(EventosRegCreateRequest request)
@@ -37,14 +37,13 @@ public class EventosRegService : IEventosRegService
         return registro;
     }
 
-    /// <summary>Actualiza fecha y consumo del registro que coincide con la clave compuesta.</summary>
-    public async Task<EventosReg?> UpdateAsync(int idMedidor, int idCtrlRF, int idEvento, EventosRegUpdateRequest request)
+    /// <summary>Actualiza el consumo del registro que coincide con los cuatro componentes de clave.</summary>
+    public async Task<EventosReg?> UpdateAsync(int idMedidor, int idCtrlRF, int idEvento, DateOnly fecha, EventosRegUpdateRequest request)
     {
         var registro = await _context.EventosReg.FirstOrDefaultAsync(e =>
-            e.idMedidor == idMedidor && e.idCtrlRF == idCtrlRF && e.idEvento == idEvento);
+            e.idMedidor == idMedidor && e.idCtrlRF == idCtrlRF && e.idEvento == idEvento && e.fecha == fecha);
         if (registro is null) return null;
 
-        registro.fecha = request.Fecha;
         registro.consumo = request.Consumo;
         await _context.SaveChangesAsync();
         return registro;

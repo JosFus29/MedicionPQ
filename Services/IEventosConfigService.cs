@@ -12,9 +12,9 @@ public interface IEventosConfigService
     Task<EventosConfig?> GetByIdAsync(int id);
 
     /// <summary>Agrega un evento y devuelve el registro persistido.</summary>
-    Task<EventosConfig> CreateAsync(EventosConfigRequest request);
+    Task<(EventosConfig? Evento, string? Error)> CreateAsync(EventosConfigRequest request);
 
     /// <summary>Reemplaza los campos editables de un evento existente.</summary>
-    Task<EventosConfig?> UpdateAsync(int id, EventosConfigRequest request);
+    Task<(EventosConfig? Evento, string? Error)> UpdateAsync(int id, EventosConfigRequest request);
 
 }

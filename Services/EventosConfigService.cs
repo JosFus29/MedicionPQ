@@ -20,25 +20,30 @@ public class EventosConfigService : IEventosConfigService
     public Task<EventosConfig?> GetByIdAsync(int id) =>
         _context.EventosConfig.AsNoTracking().FirstOrDefaultAsync(e => e.idEvento == id);
 
-    /// <summary>Crea un nuevo registro; el ID se genera según la configuración de la tabla existente.</summary>
-    public async Task<EventosConfig> CreateAsync(EventosConfigRequest request)
+    /// <summary>Valida la unidad referenciada y crea un registro; el ID lo genera la tabla existente.</summary>
+    public async Task<(EventosConfig? Evento, string? Error)> CreateAsync(EventosConfigRequest request)
     {
+        if (!await _context.Unidades.AnyAsync(u => u.idUnidad == request.IdUnidad))
+            return (null, "La unidad indicada no existe.");
+
         var evento = new EventosConfig();
         Apply(evento, request);
         _context.EventosConfig.Add(evento);
         await _context.SaveChangesAsync();
-        return evento;
+        return (evento, null);
     }
 
-    /// <summary>Busca por ID y actualiza solo ese registro, devolviendo null si no existe.</summary>
-    public async Task<EventosConfig?> UpdateAsync(int id, EventosConfigRequest request)
+    /// <summary>Valida la unidad y actualiza el evento indicado; null sin error significa que el evento no existe.</summary>
+    public async Task<(EventosConfig? Evento, string? Error)> UpdateAsync(int id, EventosConfigRequest request)
     {
         var evento = await _context.EventosConfig.FirstOrDefaultAsync(e => e.idEvento == id);
-        if (evento is null) return null;
+        if (evento is null) return (null, null);
+        if (!await _context.Unidades.AnyAsync(u => u.idUnidad == request.IdUnidad))
+            return (null, "La unidad indicada no existe.");
 
         Apply(evento, request);
         await _context.SaveChangesAsync();
-        return evento;
+        return (evento, null);
     }
 
     /// <summary>Copia los valores editables de la solicitud sin cambiar el identificador del evento.</summary>

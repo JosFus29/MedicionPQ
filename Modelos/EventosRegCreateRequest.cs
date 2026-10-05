@@ -21,12 +21,9 @@ public class EventosRegCreateRequest
     public double Consumo { get; set; }
 }
 
-/// <summary>Campos modificables de un registro; su clave primaria compuesta permanece inmutable.</summary>
+/// <summary>Valor editable de un registro; su clave primaria compuesta permanece inmutable.</summary>
 public class EventosRegUpdateRequest
 {
-    /// <summary>Nueva fecha del registro, en formato ISO yyyy-MM-dd.</summary>
-    public DateOnly Fecha { get; set; }
-
     /// <summary>Nuevo valor de consumo.</summary>
     public double Consumo { get; set; }
 }

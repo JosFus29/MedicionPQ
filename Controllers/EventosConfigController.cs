@@ -33,8 +33,9 @@ public class EventosConfigController : ControllerBase
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> Create([FromBody] EventosConfigRequest request)
     {
-        var evento = await _service.CreateAsync(request);
-        return CreatedAtAction(nameof(GetById), new { id = evento.idEvento }, evento);
+        var (evento, error) = await _service.CreateAsync(request);
+        if (error is not null) return BadRequest(new { mensaje = error });
+        return CreatedAtAction(nameof(GetById), new { id = evento!.idEvento }, evento);
     }
 
     /// <summary>Reemplaza los datos de un evento existente; solo el rol Administrador puede editar.</summary>
@@ -42,7 +43,8 @@ public class EventosConfigController : ControllerBase
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> Update(int id, [FromBody] EventosConfigRequest request)
     {
-        var evento = await _service.UpdateAsync(id, request);
+        var (evento, error) = await _service.UpdateAsync(id, request);
+        if (error is not null) return BadRequest(new { mensaje = error });
         return evento is null ? NotFound(new { mensaje = "Evento no encontrado." }) : Ok(evento);
     }
 

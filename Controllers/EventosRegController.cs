@@ -20,11 +20,11 @@ public class EventosRegController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll() => Ok(await _service.GetAllAsync());
 
-    /// <summary>Consulta un registro usando los tres IDs de su clave compuesta.</summary>
-    [HttpGet("{idMedidor:int}/{idCtrlRF:int}/{idEvento:int}")]
-    public async Task<IActionResult> GetById(int idMedidor, int idCtrlRF, int idEvento)
+    /// <summary>Consulta un registro usando los tres IDs y la fecha de su clave compuesta.</summary>
+    [HttpGet("{idMedidor:int}/{idCtrlRF:int}/{idEvento:int}/{fecha}")]
+    public async Task<IActionResult> GetById(int idMedidor, int idCtrlRF, int idEvento, DateOnly fecha)
     {
-        var registro = await _service.GetByIdAsync(idMedidor, idCtrlRF, idEvento);
+        var registro = await _service.GetByIdAsync(idMedidor, idCtrlRF, idEvento, fecha);
         return registro is null ? NotFound(new { mensaje = "Registro de evento no encontrado." }) : Ok(registro);
     }
 
@@ -38,16 +38,17 @@ public class EventosRegController : ControllerBase
         {
             idMedidor = registro.idMedidor,
             idCtrlRF = registro.idCtrlRF,
-            idEvento = registro.idEvento
+            idEvento = registro.idEvento,
+            fecha = registro.fecha.ToString("yyyy-MM-dd")
         }, registro);
     }
 
-    /// <summary>Actualiza fecha y consumo; la clave compuesta no se modifica y solo un administrador puede editar.</summary>
-    [HttpPut("{idMedidor:int}/{idCtrlRF:int}/{idEvento:int}")]
+    /// <summary>Actualiza el consumo; la clave compuesta, incluida la fecha, no se modifica.</summary>
+    [HttpPut("{idMedidor:int}/{idCtrlRF:int}/{idEvento:int}/{fecha}")]
     [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> Update(int idMedidor, int idCtrlRF, int idEvento, [FromBody] EventosRegUpdateRequest request)
+    public async Task<IActionResult> Update(int idMedidor, int idCtrlRF, int idEvento, DateOnly fecha, [FromBody] EventosRegUpdateRequest request)
     {
-        var registro = await _service.UpdateAsync(idMedidor, idCtrlRF, idEvento, request);
+        var registro = await _service.UpdateAsync(idMedidor, idCtrlRF, idEvento, fecha, request);
         return registro is null ? NotFound(new { mensaje = "Registro de evento no encontrado." }) : Ok(registro);
     }
 

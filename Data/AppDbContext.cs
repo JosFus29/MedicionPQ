@@ -35,9 +35,9 @@ public class AppDbContext : DbContext
     /// <summary>Configura la relación de muchos medidores hacia un único controlador RF.</summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // La tabla identifica cada registro combinando el medidor, controlador y tipo de evento.
+        // La tabla identifica cada registro combinando medidor, controlador, evento y fecha.
         modelBuilder.Entity<EventosReg>()
-            .HasKey(registro => new { registro.idMedidor, registro.idCtrlRF, registro.idEvento });
+            .HasKey(registro => new { registro.idMedidor, registro.idCtrlRF, registro.idEvento, registro.fecha });
 
         modelBuilder.Entity<MedidorQP>()
             .HasOne<ControladorRF>()

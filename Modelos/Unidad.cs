@@ -12,8 +12,8 @@ public class Unidad
     public int idUnidad { get; set; }
 
     /// <summary>Símbolo de la unidad, de hasta 10 caracteres.</summary>
-    [Required, StringLength(10)]
-    public string simbolo { get; set; } = string.Empty;
+    [StringLength(10)]
+    public string? simbolo { get; set; }
 
     /// <summary>Nombre de la unidad, de hasta 50 caracteres.</summary>
     [Required, StringLength(50)]
