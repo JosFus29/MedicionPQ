@@ -65,6 +65,17 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | `GET /api/Unidades/{id}` | Usuario autenticado | Consulta el detalle de una unidad. |
 | `POST /api/Unidades` | Administrador | Agrega una unidad y devuelve `201`. |
 | `PUT /api/Unidades/{id}` | Administrador | Actualiza los datos de una unidad. |
+| `GET /api/IO_GrupoElectrico` | Usuario autenticado | Lista grupos eléctricos. |
+| `GET /api/IO_GrupoElectrico/{id}` | Usuario autenticado | Consulta un grupo eléctrico. |
+| `POST /api/IO_GrupoElectrico` | Administrador | Agrega un grupo eléctrico. |
+| `PUT /api/IO_GrupoElectrico/{id}` | Administrador | Actualiza un grupo eléctrico. |
+| `GET /api/IO_GrupoFuncional` | Usuario autenticado | Lista grupos funcionales. |
+| `GET /api/IO_GrupoFuncional/{id}` | Usuario autenticado | Consulta un grupo funcional. |
+| `POST /api/IO_GrupoFuncional` | Administrador | Agrega un grupo funcional. |
+| `PUT /api/IO_GrupoFuncional/{id}` | Administrador | Actualiza un grupo funcional. |
+| `GET /api/PuntosIO` | Usuario autenticado | Lista puntos IO. |
+| `GET /api/PuntosIO/{id}` | Usuario autenticado | Consulta un punto IO. |
+| `PUT /api/PuntosIO/{id}` | Administrador | Edita un punto después de verificar nuevamente su contraseña. |
 | `GET /api/EventosReg` | Usuario autenticado | Lista los registros de eventos. |
 | `GET /api/EventosReg/{idMedidor}/{idCtrlRF}/{idEvento}/{fecha}` | Usuario autenticado | Consulta un registro por su clave compuesta. |
 | `POST /api/EventosReg` | Administrador | Agrega un registro de evento. |
@@ -142,6 +153,50 @@ Ejemplo de solicitud:
 ```
 
 No existe eliminación física de unidades. El administrador las da de baja usando `edo: false` en `PUT /api/Unidades/{id}`; si la unidad está referenciada, se conserva junto con los datos relacionados.
+
+### Grupos IO
+
+Ambos catálogos permiten consulta a cualquier usuario autenticado y alta/edición solo a administradores. No tienen eliminación física; el administrador los inactiva actualizando `edo` a `false` y los reactiva con `true` (`bit` 0/1 en la base). `nombre` es obligatorio y acepta hasta 50 caracteres.
+
+- `IO_GrupoElectrico`: `GET /api/IO_GrupoElectrico`, `GET /api/IO_GrupoElectrico/{idGE}`, `POST /api/IO_GrupoElectrico` y `PUT /api/IO_GrupoElectrico/{idGE}`. `idGE` es autoincremental y no se manda en el alta.
+- `IO_GrupoFuncional`: `GET /api/IO_GrupoFuncional`, `GET /api/IO_GrupoFuncional/{idGF}`, `POST /api/IO_GrupoFuncional` y `PUT /api/IO_GrupoFuncional/{idGF}`. `idGF` es autoincremental y no se manda en el alta.
+
+Ambos `POST` reciben este formato:
+
+```json
+{
+  "nombre": "Grupo principal",
+  "edo": true
+}
+```
+
+El `PUT` recibe los mismos campos. El detalle de un ID inexistente devuelve `404`.
+
+### Puntos IO
+
+Cualquier usuario autenticado puede consultar `GET /api/PuntosIO` y `GET /api/PuntosIO/{id}`. Solo un administrador puede editar con `PUT /api/PuntosIO/{id}`. Antes de guardar, la API vuelve a verificar `contrasenaActual` contra el hash de la cuenta autenticada; una contraseña incorrecta devuelve `401`. La contraseña se usa solo para la verificación y nunca forma parte de la respuesta ni se guarda en `PuntosIO`.
+
+El cuerpo del `PUT` contiene `idGF`, `idGE`, `idUnidad`, `tag` (máximo 30 caracteres), `descripcion` (máximo 150), `tipoDato` (máximo 20), `tipoReg` (máximo 5), `dirCCEC`, `dirMB`, `edo`, `limMin`, `limMax` y `contrasenaActual`. Los IDs de grupo y unidad deben existir; si alguna referencia no existe, responde `400`. Un punto inexistente devuelve `404`.
+
+Ejemplo:
+
+```json
+{
+  "idGF": 1,
+  "idGE": 2,
+  "idUnidad": 3,
+  "tag": "PRESION_01",
+  "descripcion": "Sensor de presión principal",
+  "tipoDato": "int",
+  "tipoReg": "HR",
+  "dirCCEC": 10,
+  "dirMB": 100,
+  "edo": true,
+  "limMin": 0,
+  "limMax": 500,
+  "contrasenaActual": "contraseña-del-admin"
+}
+```
 
 ### Registros de eventos
 
@@ -225,7 +280,7 @@ Los usuarios se devuelven como DTO con `idUsuario`, `correo`, `nombreUsuario`, `
 - `Program.cs`: registra controladores, EF Core, servicios, JWT, CORS, Swagger y el orden de middlewares.
 - `Controllers/`: define rutas HTTP, códigos de respuesta y autorización; delega reglas a servicios.
 - `Services/`: implementa autenticación, administración de usuarios, generación de JWT y hash de contraseñas.
-- `Data/AppDbContext.cs`: contexto de Entity Framework y entidades `Usuario`, `ControladorRF`, `MedidorQP`, `EventosConfig`, `Unidad` y `EventosReg`.
+- `Data/AppDbContext.cs`: contexto de Entity Framework y entidades `Usuario`, `ControladorRF`, `MedidorQP`, `EventosConfig`, `Unidad`, `EventosReg`, catálogos de grupos IO y `PuntosIO`.
 - `Modelos/`: entidad persistida, solicitudes de entrada y DTOs de respuesta.
 - `Tests/`: pruebas unitarias existentes para autenticación y servicios de usuarios.
 - `Tools/MigrateAdminPassword/`: herramienta auxiliar para migrar la contraseña de administrador.

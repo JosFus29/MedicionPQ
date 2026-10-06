@@ -32,6 +32,15 @@ public class AppDbContext : DbContext
     /// <summary>Conjunto de registros asociado a la tabla <c>EventosReg</c>.</summary>
     public DbSet<EventosReg> EventosReg { get; set; }
 
+    /// <summary>Conjunto de grupos eléctricos asociado a <c>IO_GrupoElectrico</c>.</summary>
+    public DbSet<IO_GrupoElectrico> GruposElectricos { get; set; }
+
+    /// <summary>Conjunto de grupos funcionales asociado a <c>IO_GrupoFuncional</c>.</summary>
+    public DbSet<IO_GrupoFuncional> GruposFuncionales { get; set; }
+
+    /// <summary>Conjunto de puntos de entrada/salida asociado a la tabla <c>PuntosIO</c>.</summary>
+    public DbSet<PuntosIO> PuntosIO { get; set; }
+
     /// <summary>Configura la relación de muchos medidores hacia un único controlador RF.</summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

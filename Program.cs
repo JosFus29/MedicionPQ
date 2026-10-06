@@ -56,6 +56,11 @@ builder.Services.AddScoped<IEventosConfigService, EventosConfigService>();
 builder.Services.AddScoped<IUnidadService, UnidadService>();
 // Servicio para consultar y administrar los registros de eventos.
 builder.Services.AddScoped<IEventosRegService, EventosRegService>();
+// Servicios para consultar y administrar ambos catálogos IO.
+builder.Services.AddScoped<IIOGrupoElectricoService, IOGrupoElectricoService>();
+builder.Services.AddScoped<IIOGrupoFuncionalService, IOGrupoFuncionalService>();
+// Servicio para consultar puntos IO y revalidar la contraseña en cada edición administrativa.
+builder.Services.AddScoped<IPuntosIOService, PuntosIOService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<TokenService>();
 
