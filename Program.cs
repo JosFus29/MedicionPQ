@@ -46,6 +46,21 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Registra servicios de negocio con ciclo de vida por solicitud HTTP.
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
+// Registra las operaciones de consulta, alta y actualización de controladores RF.
+builder.Services.AddScoped<IControladorRFService, ControladorRFService>();
+// Servicio para validar la relación con ControladorRF y guardar medidores QP.
+builder.Services.AddScoped<IMedidorQPService, MedidorQPService>();
+// Servicio para consultar, agregar, editar y eliminar eventos configurables.
+builder.Services.AddScoped<IEventosConfigService, EventosConfigService>();
+// Servicio para consultar y administrar el catálogo de unidades.
+builder.Services.AddScoped<IUnidadService, UnidadService>();
+// Servicio para consultar y administrar los registros de eventos.
+builder.Services.AddScoped<IEventosRegService, EventosRegService>();
+// Servicios para consultar y administrar ambos catálogos IO.
+builder.Services.AddScoped<IIOGrupoElectricoService, IOGrupoElectricoService>();
+builder.Services.AddScoped<IIOGrupoFuncionalService, IOGrupoFuncionalService>();
+// Servicio para consultar puntos IO y revalidar la contraseña en cada edición administrativa.
+builder.Services.AddScoped<IPuntosIOService, PuntosIOService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<TokenService>();
 
