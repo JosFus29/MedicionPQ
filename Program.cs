@@ -63,6 +63,8 @@ builder.Services.AddScoped<IIOGrupoFuncionalService, IOGrupoFuncionalService>();
 builder.Services.AddScoped<IPuntosIOService, PuntosIOService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<TokenService>();
+// Registra el servicio de variables eléctricas (Vars5M) para inyección de dependencias.
+builder.Services.AddScoped<IVars5MService, Vars5MService>();
 
 // Comprueba la configuración JWT antes de iniciar para evitar emitir tokens con datos incompletos.
 var jwtKey = builder.Configuration["Jwt:Key"];

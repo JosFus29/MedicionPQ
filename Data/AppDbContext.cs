@@ -41,6 +41,12 @@ public class AppDbContext : DbContext
     /// <summary>Conjunto de puntos de entrada/salida asociado a la tabla <c>PuntosIO</c>.</summary>
     public DbSet<PuntosIO> PuntosIO { get; set; }
 
+    /// <summary>
+    /// Tabla de variables eléctricas configuradas (Vars5M).
+    /// Define qué variables se miden, su unidad, código IHM, estado y número de fases.
+    /// </summary>
+    public DbSet<Vars5M> Vars5M { get; set; }
+
     /// <summary>Configura la relación de muchos medidores hacia un único controlador RF.</summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
