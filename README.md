@@ -76,6 +76,13 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | `GET /api/PuntosIO` | Usuario autenticado | Lista puntos IO. |
 | `GET /api/PuntosIO/{id}` | Usuario autenticado | Consulta un punto IO. |
 | `PUT /api/PuntosIO/{id}` | Administrador | Edita un punto después de verificar nuevamente su contraseña. |
+| `GET /api/Medicion5M/crudo` | Usuario autenticado | Consulta lecturas de cinco minutos por medidor, variable, fechas y fase. |
+| `GET /api/Medicion5M/promedio-hora` | Usuario autenticado | Consulta promedios horarios. |
+| `GET /api/Medicion5M/promedio-dia` | Usuario autenticado | Consulta promedios diarios. |
+| `GET /api/Medicion5M/promedio-semana` | Usuario autenticado | Consulta valores diarios etiquetados por semana. |
+| `GET /api/Medicion5M/promedio-mes` | Usuario autenticado | Consulta valores diarios etiquetados por mes. |
+| `GET /api/Medicion5M/promedio-anio` | Usuario autenticado | Consulta promedios mensuales agrupados por año. |
+| `PUT /api/Medicion5M/{idMedidor}/{idVar5M}/{fecha}/{fase}/{intervalo}` | Administrador | Edita el valor de una lectura revalidando la contraseña. |
 | `GET /api/EventosReg` | Usuario autenticado | Lista los registros de eventos. |
 | `GET /api/EventosReg/{idMedidor}/{idCtrlRF}/{idEvento}/{fecha}` | Usuario autenticado | Consulta un registro por su clave compuesta. |
 | `POST /api/EventosReg` | Administrador | Agrega un registro de evento. |
@@ -198,6 +205,25 @@ Ejemplo:
 }
 ```
 
+### Mediciones de cinco minutos
+
+Las seis vistas `vw_Medicion5M`, `vw_Medicion5M_PromedioHora`, `vw_Medicion5M_PromedioDia`, `vw_Medicion5M_PromedioSemana`, `vw_Medicion5M_PromedioMes` y `vw_Medicion5M_PromedioAnio` son de solo lectura y están disponibles para cualquier usuario autenticado. Cada consulta filtra por `idMedidor`, `idVar5M`, `fechaInicio`, `fechaFin` y `fase`; el rango de fechas incluye ambos extremos. Las fases son `1` A, `2` B y `3` C.
+
+Primero el frontend obtiene controladores con `GET /api/ControladorRF`, elige un medidor de la propiedad `medidores` y después envía el ID de variable. La API de `Vars5M` se agregará posteriormente; cuando esté disponible, deberá relacionar cada variable con `Unidades` para que el frontend muestre su símbolo o nombre. Las vistas de medición no incluyen la unidad.
+
+Rutas de lectura:
+
+- `GET /api/Medicion5M/crudo`: filas con `intervalo` de `0` a `287` (`00:00` a `23:55`) y `valor`.
+- `GET /api/Medicion5M/promedio-hora`: `hora` entera de `0` a `23` y `valorPromedio`.
+- `GET /api/Medicion5M/promedio-dia`: promedio diario.
+- `GET /api/Medicion5M/promedio-semana`: filas diarias con `anio` y `semana`.
+- `GET /api/Medicion5M/promedio-mes`: filas diarias con `anio` y `mes`.
+- `GET /api/Medicion5M/promedio-anio`: promedio por mes con `anio` y `mes`; devuelve los meses que intersectan el rango solicitado.
+
+Todas reciben los parámetros de consulta `idMedidor`, `idVar5M`, `fechaInicio` y `fechaFin` en formato `yyyy-MM-dd`, además de `fase`. Ejemplo: `GET /api/Medicion5M/crudo?idMedidor=4&idVar5M=2&fechaInicio=2026-10-01&fechaFin=2026-10-07&fase=1`. Si hay algunos registros pero faltan días o intervalos, se devuelven las filas existentes; si no hay ningún resultado en toda la consulta, responde `404` con un mensaje controlado. Filtros inválidos responden `400`.
+
+Un administrador puede modificar solo el campo `valor` de una lectura existente mediante `PUT /api/Medicion5M/{idMedidor}/{idVar5M}/{fecha}/{fase}/{intervalo}`. La ruta identifica la clave compuesta completa; `fase` debe ser `1..3` e `intervalo` `0..287`. El cuerpo incluye `valor` y `contrasenaActual`. La API revalida que la cuenta autenticada siga activa y sea administradora, y verifica la contraseña contra el hash almacenado. Contraseña incorrecta responde `401`; clave inexistente, `404`. No se exponen rutas de alta ni eliminación.
+
 ### Registros de eventos
 
 La API consulta la tabla existente `EventosReg`. Cualquier usuario autenticado puede listar (`GET /api/EventosReg`) y consultar el detalle mediante los cuatro componentes de la clave: `idMedidor`, `idCtrlRF`, `idEvento` y `fecha`. Solo el rol `Administrador` puede agregar o editar; un registro no encontrado devuelve `404`.
@@ -280,7 +306,7 @@ Los usuarios se devuelven como DTO con `idUsuario`, `correo`, `nombreUsuario`, `
 - `Program.cs`: registra controladores, EF Core, servicios, JWT, CORS, Swagger y el orden de middlewares.
 - `Controllers/`: define rutas HTTP, códigos de respuesta y autorización; delega reglas a servicios.
 - `Services/`: implementa autenticación, administración de usuarios, generación de JWT y hash de contraseñas.
-- `Data/AppDbContext.cs`: contexto de Entity Framework y entidades `Usuario`, `ControladorRF`, `MedidorQP`, `EventosConfig`, `Unidad`, `EventosReg`, catálogos de grupos IO y `PuntosIO`.
+- `Data/AppDbContext.cs`: contexto de Entity Framework, entidades del dominio y mapeos de las vistas de medición.
 - `Modelos/`: entidad persistida, solicitudes de entrada y DTOs de respuesta.
 - `Tests/`: pruebas unitarias existentes para autenticación y servicios de usuarios.
 - `Tools/MigrateAdminPassword/`: herramienta auxiliar para migrar la contraseña de administrador.

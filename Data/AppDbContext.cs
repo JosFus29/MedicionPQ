@@ -41,12 +41,43 @@ public class AppDbContext : DbContext
     /// <summary>Conjunto de puntos de entrada/salida asociado a la tabla <c>PuntosIO</c>.</summary>
     public DbSet<PuntosIO> PuntosIO { get; set; }
 
+    /// <summary>Conjunto de lecturas crudas de la tabla <c>Medicion5M</c>.</summary>
+    public DbSet<Medicion5M> Mediciones5M { get; set; }
+
+    /// <summary>Vista de lecturas crudas cada cinco minutos.</summary>
+    public DbSet<Medicion5MView> VistaMedicion5M { get; set; }
+
+    /// <summary>Vista de promedios por hora.</summary>
+    public DbSet<Medicion5MPromedioHoraView> VistaMedicion5MPromedioHora { get; set; }
+
+    /// <summary>Vista de promedios diarios.</summary>
+    public DbSet<Medicion5MPromedioDiaView> VistaMedicion5MPromedioDia { get; set; }
+
+    /// <summary>Vista de promedios diarios agrupados por semana.</summary>
+    public DbSet<Medicion5MPromedioSemanaView> VistaMedicion5MPromedioSemana { get; set; }
+
+    /// <summary>Vista de promedios diarios agrupados por mes.</summary>
+    public DbSet<Medicion5MPromedioMesView> VistaMedicion5MPromedioMes { get; set; }
+
+    /// <summary>Vista de promedios mensuales agrupados por año.</summary>
+    public DbSet<Medicion5MPromedioAnioView> VistaMedicion5MPromedioAnio { get; set; }
+
     /// <summary>Configura la relación de muchos medidores hacia un único controlador RF.</summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // La tabla identifica cada registro combinando medidor, controlador, evento y fecha.
         modelBuilder.Entity<EventosReg>()
             .HasKey(registro => new { registro.idMedidor, registro.idCtrlRF, registro.idEvento, registro.fecha });
+
+        modelBuilder.Entity<Medicion5M>()
+            .HasKey(medicion => new { medicion.idMedidor, medicion.idVar5M, medicion.fecha, medicion.fase, medicion.intervalo });
+
+        modelBuilder.Entity<Medicion5MView>().ToView("vw_Medicion5M").HasNoKey();
+        modelBuilder.Entity<Medicion5MPromedioHoraView>().ToView("vw_Medicion5M_PromedioHora").HasNoKey();
+        modelBuilder.Entity<Medicion5MPromedioDiaView>().ToView("vw_Medicion5M_PromedioDia").HasNoKey();
+        modelBuilder.Entity<Medicion5MPromedioSemanaView>().ToView("vw_Medicion5M_PromedioSemana").HasNoKey();
+        modelBuilder.Entity<Medicion5MPromedioMesView>().ToView("vw_Medicion5M_PromedioMes").HasNoKey();
+        modelBuilder.Entity<Medicion5MPromedioAnioView>().ToView("vw_Medicion5M_PromedioAnio").HasNoKey();
 
         modelBuilder.Entity<MedidorQP>()
             .HasOne<ControladorRF>()

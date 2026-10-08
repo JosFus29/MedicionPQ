@@ -61,6 +61,8 @@ builder.Services.AddScoped<IIOGrupoElectricoService, IOGrupoElectricoService>();
 builder.Services.AddScoped<IIOGrupoFuncionalService, IOGrupoFuncionalService>();
 // Servicio para consultar puntos IO y revalidar la contraseña en cada edición administrativa.
 builder.Services.AddScoped<IPuntosIOService, PuntosIOService>();
+// Servicio de consulta de vistas de medición y edición de lecturas con revalidación administrativa.
+builder.Services.AddScoped<IMedicion5MService, Medicion5MService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<TokenService>();
 
