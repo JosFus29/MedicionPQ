@@ -185,6 +185,8 @@ Cualquier usuario autenticado puede consultar `GET /api/PuntosIO` y `GET /api/Pu
 
 El cuerpo del `PUT` contiene `idGF`, `idGE`, `idUnidad`, `tag` (máximo 30 caracteres), `descripcion` (máximo 150), `tipoDato` (máximo 20), `tipoReg` (máximo 5), `dirCCEC`, `dirMB`, `edo`, `limMin`, `limMax` y `contrasenaActual`. Los IDs de grupo y unidad deben existir; si alguna referencia no existe, responde `400`. Un punto inexistente devuelve `404`.
 
+En la tabla, los límites están almacenados en las columnas `Min` y `Max`. La API las mapea a sus propiedades y campos de solicitud `limMin` y `limMax`.
+
 Ejemplo:
 
 ```json

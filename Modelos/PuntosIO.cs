@@ -46,8 +46,10 @@ public class PuntosIO
     public bool Edo { get; set; }
 
     /// <summary>Límite mínimo configurado.</summary>
+    [Column("Min")]
     public int LimMin { get; set; }
 
     /// <summary>Límite máximo configurado.</summary>
+    [Column("Max")]
     public int LimMax { get; set; }
 }
