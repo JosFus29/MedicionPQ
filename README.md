@@ -82,7 +82,6 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | `GET /api/Medicion5M/promedio-semana` | Usuario autenticado | Consulta valores diarios etiquetados por semana. |
 | `GET /api/Medicion5M/promedio-mes` | Usuario autenticado | Consulta valores diarios etiquetados por mes. |
 | `GET /api/Medicion5M/promedio-anio` | Usuario autenticado | Consulta promedios mensuales agrupados por año. |
-| `PUT /api/Medicion5M/{idMedidor}/{idVar5M}/{fecha}/{fase}/{intervalo}` | Administrador | Edita el valor de una lectura revalidando la contraseña. |
 | `GET /api/EventosReg` | Usuario autenticado | Lista los registros de eventos. |
 | `GET /api/EventosReg/{idMedidor}/{idCtrlRF}/{idEvento}/{fecha}` | Usuario autenticado | Consulta un registro por su clave compuesta. |
 | `POST /api/EventosReg` | Administrador | Agrega un registro de evento. |
@@ -224,7 +223,7 @@ Rutas de lectura:
 
 Todas reciben los parámetros de consulta `idMedidor`, `idVar5M`, `fechaInicio` y `fechaFin` en formato `yyyy-MM-dd`, además de `fase`. Ejemplo: `GET /api/Medicion5M/crudo?idMedidor=4&idVar5M=2&fechaInicio=2026-10-01&fechaFin=2026-10-07&fase=1`. Si hay algunos registros pero faltan días o intervalos, se devuelven las filas existentes; si no hay ningún resultado en toda la consulta, responde `404` con un mensaje controlado. Filtros inválidos responden `400`.
 
-Un administrador puede modificar solo el campo `valor` de una lectura existente mediante `PUT /api/Medicion5M/{idMedidor}/{idVar5M}/{fecha}/{fase}/{intervalo}`. La ruta identifica la clave compuesta completa; `fase` debe ser `1..3` e `intervalo` `0..287`. El cuerpo incluye `valor` y `contrasenaActual`. La API revalida que la cuenta autenticada siga activa y sea administradora, y verifica la contraseña contra el hash almacenado. Contraseña incorrecta responde `401`; clave inexistente, `404`. No se exponen rutas de alta ni eliminación.
+Las seis rutas de `Medicion5M` son exclusivamente de consulta para cualquier usuario autenticado. No existe una ruta para modificar, agregar o eliminar mediciones; las vistas y la tabla base permanecen sin cambios por medio de esta API.
 
 ### Registros de eventos
 

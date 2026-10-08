@@ -4,18 +4,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MedicionPQ.Services;
 
-/// <summary>Consulta las vistas de mediciones y actualiza valores tras revalidar al administrador.</summary>
+/// <summary>Consulta en modo de solo lectura las vistas de mediciones.</summary>
 public class Medicion5MService : IMedicion5MService
 {
     private readonly AppDbContext _context;
-    private readonly IPasswordService _passwordService;
 
     /// <summary>Inicializa el servicio con acceso a datos y verificación de contraseñas.</summary>
-    public Medicion5MService(AppDbContext context, IPasswordService passwordService)
-    {
-        _context = context;
-        _passwordService = passwordService;
-    }
+    /// <summary>Inicializa el servicio con acceso de consulta a las vistas de mediciones.</summary>
+    public Medicion5MService(AppDbContext context) => _context = context;
 
     /// <summary>Lee filas crudas filtradas por medidor, variable, fechas y fase.</summary>
     public Task<List<Medicion5MView>> GetCrudasAsync(int idMedidor, int idVar5M, DateOnly inicio, DateOnly fin, short fase) =>
@@ -55,21 +51,4 @@ public class Medicion5MService : IMedicion5MService
                 (m.anio < fin.Year || (m.anio == fin.Year && m.mes <= fin.Month)))
             .OrderBy(m => m.anio).ThenBy(m => m.mes).ToListAsync();
 
-    /// <summary>Vuelve a validar rol, estado y contraseña antes de cambiar valor en la tabla base.</summary>
-    public async Task<Medicion5MUpdateResult> UpdateAsync(int idMedidor, int idVar5M, DateOnly fecha, short fase, short intervalo, int idUsuario, Medicion5MUpdateRequest request)
-    {
-        var usuario = await _context.Usuarios.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.idUsuario == idUsuario);
-        if (usuario is null || !usuario.edo || usuario.rol != Usuario.TipoRol.Administrador ||
-            !_passwordService.VerifyPassword(usuario.contrasena, request.ContrasenaActual))
-            return new(null, Medicion5MUpdateError.CredencialesInvalidas);
-
-        var medicion = await _context.Mediciones5M.FirstOrDefaultAsync(m =>
-            m.idMedidor == idMedidor && m.idVar5M == idVar5M && m.fecha == fecha && m.fase == fase && m.intervalo == intervalo);
-        if (medicion is null) return new(null, Medicion5MUpdateError.NoEncontrada);
-
-        medicion.valor = request.Valor;
-        await _context.SaveChangesAsync();
-        return new(medicion, Medicion5MUpdateError.None);
-    }
 }

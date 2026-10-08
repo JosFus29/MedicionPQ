@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using MedicionPQ.Modelos;
 using MedicionPQ.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -6,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace MedicionPQ.Controllers;
 
-/// <summary>Consultas de lecturas y promedios de cinco minutos, más edición revalidada para administradores.</summary>
+/// <summary>Consultas de solo lectura a las vistas de mediciones de cinco minutos.</summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
@@ -72,30 +71,6 @@ public class Medicion5MController : ControllerBase
     }
 
     /// <summary>Edita una lectura individual; solo administrador con contraseña actual válida.</summary>
-    [HttpPut("{idMedidor:int}/{idVar5M:int}/{fecha}/{fase:int}/{intervalo:int}")]
-    [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> Update(int idMedidor, int idVar5M, DateOnly fecha, int fase, int intervalo,
-        [FromBody] Medicion5MUpdateRequest request)
-    {
-        if (fase is < 1 or > 3)
-            return BadRequest(new { mensaje = "La fase debe ser 1 (A), 2 (B) o 3 (C)." });
-        if (intervalo is < 0 or > 287)
-            return BadRequest(new { mensaje = "El intervalo debe estar entre 0 y 287." });
-
-        var claimId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(claimId, out var idUsuario))
-            return Unauthorized(new { mensaje = "No se pudo identificar al administrador autenticado." });
-
-        var result = await _service.UpdateAsync(idMedidor, idVar5M, fecha, (short)fase, (short)intervalo, idUsuario, request);
-        return result.Error switch
-        {
-            Medicion5MUpdateError.None => Ok(result.Medicion),
-            Medicion5MUpdateError.NoEncontrada => NotFound(new { mensaje = "No existe una medición con esa clave." }),
-            Medicion5MUpdateError.CredencialesInvalidas => Unauthorized(new { mensaje = "La contraseña actual no es válida." }),
-            _ => BadRequest(new { mensaje = "No se pudo actualizar la medición." })
-        };
-    }
-
     /// <summary>Valida filtros comunes para fases y rangos de fecha antes de consultar una vista.</summary>
     private IActionResult? ValidateQuery(int idMedidor, int idVar5M, DateOnly inicio, DateOnly fin, short fase)
     {

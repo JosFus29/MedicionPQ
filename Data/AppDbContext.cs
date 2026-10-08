@@ -41,9 +41,6 @@ public class AppDbContext : DbContext
     /// <summary>Conjunto de puntos de entrada/salida asociado a la tabla <c>PuntosIO</c>.</summary>
     public DbSet<PuntosIO> PuntosIO { get; set; }
 
-    /// <summary>Conjunto de lecturas crudas de la tabla <c>Medicion5M</c>.</summary>
-    public DbSet<Medicion5M> Mediciones5M { get; set; }
-
     /// <summary>Vista de lecturas crudas cada cinco minutos.</summary>
     public DbSet<Medicion5MView> VistaMedicion5M { get; set; }
 
@@ -68,9 +65,6 @@ public class AppDbContext : DbContext
         // La tabla identifica cada registro combinando medidor, controlador, evento y fecha.
         modelBuilder.Entity<EventosReg>()
             .HasKey(registro => new { registro.idMedidor, registro.idCtrlRF, registro.idEvento, registro.fecha });
-
-        modelBuilder.Entity<Medicion5M>()
-            .HasKey(medicion => new { medicion.idMedidor, medicion.idVar5M, medicion.fecha, medicion.fase, medicion.intervalo });
 
         modelBuilder.Entity<Medicion5MView>().ToView("vw_Medicion5M").HasNoKey();
         modelBuilder.Entity<Medicion5MPromedioHoraView>().ToView("vw_Medicion5M_PromedioHora").HasNoKey();
