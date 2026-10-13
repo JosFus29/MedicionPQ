@@ -2,12 +2,28 @@ using System.Text;
 using MedicionPQ.Data;
 using MedicionPQ.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
 // Punto de entrada: configura los servicios y el flujo HTTP de la API.
 var builder = WebApplication.CreateBuilder(args);
+
+// Mantiene los errores de desarrollo en la consola y evita que el Event Log oculte la excepción original.
+if (builder.Environment.IsDevelopment())
+{
+    builder.Logging.ClearProviders();
+    builder.Logging.AddConsole();
+}
+
+// Aísla las llaves de desarrollo en el proyecto para no reutilizar un key ring DPAPI incompatible.
+if (builder.Environment.IsDevelopment() && OperatingSystem.IsWindows())
+{
+    var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, ".dataprotection-keys");
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
+}
 
 // Registra los controladores que publican los endpoints REST.
 builder.Services.AddControllers();

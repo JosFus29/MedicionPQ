@@ -31,6 +31,8 @@ En desarrollo, `appsettings.Development.json` permite el origen Vite `http://loc
 
 No uses `*` con credenciales. La API no habilita CORS para ningún origen mientras la lista esté vacía. CORS aplica a navegadores; no reemplaza la autenticación.
 
+En Windows y solo en desarrollo, ASP.NET Core guarda las llaves de Data Protection en `.dataprotection-keys/` dentro del proyecto. La carpeta está excluida de Git y evita reutilizar llaves heredadas de otra cuenta de Windows. Se guardan sin cifrado de reposo; conserva los permisos locales y configura un almacén persistente y cifrado para producción. Los logs de desarrollo se envían a la consola.
+
 ## Ejecutar
 
 ```powershell

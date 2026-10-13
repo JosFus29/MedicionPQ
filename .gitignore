@@ -20,6 +20,7 @@
 mono_crash.*
 
 # Build results
+/.dataprotection-keys/
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
