@@ -1,21 +1,37 @@
 using System.Text;
 using MedicionPQ.Data;
+using MedicionPQ.Middleware;
 using MedicionPQ.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Serilog;
+using Serilog.Events;
 
 // Punto de entrada: configura los servicios y el flujo HTTP de la API.
 var builder = WebApplication.CreateBuilder(args);
 
-// Mantiene los errores de desarrollo en la consola y evita que el Event Log oculte la excepción original.
-if (builder.Environment.IsDevelopment())
-{
-    builder.Logging.ClearProviders();
-    builder.Logging.AddConsole();
-}
+// Configura Serilog como el sistema de logs de la API.
+// Escribe cada entrada en la consola y en un archivo .txt por día dentro de la carpeta Logs (se guardan 30 días).
+// Formato: fecha y hora, nivel (INF, WRN, ERR, FTL) y mensaje; si hay una excepción, su detalle en las líneas siguientes.
+const string formatoLog = "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}";
+builder.Host.UseSerilog((context, configuracion) => configuracion
+    .MinimumLevel.Information()
+    // Los mensajes internos de ASP.NET Core y EF Core solo se registran si son advertencias o errores.
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("System", LogEventLevel.Warning)
+    // Muestra la dirección donde escucha la API ("Now listening on...") al iniciar.
+    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
+    // Las excepciones no controladas ya las registra RegistroSolicitudesMiddleware; esto evita duplicarlas.
+    .MinimumLevel.Override("Microsoft.AspNetCore.Diagnostics", LogEventLevel.Fatal)
+    .WriteTo.Console(outputTemplate: formatoLog)
+    .WriteTo.File(
+        Path.Combine(context.HostingEnvironment.ContentRootPath, "Logs", "log-.txt"),
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        outputTemplate: formatoLog));
 
 // Aísla las llaves de desarrollo en el proyecto para no reutilizar un key ring DPAPI incompatible.
 if (builder.Environment.IsDevelopment() && OperatingSystem.IsWindows())
@@ -55,9 +71,16 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+// Permite saber, fuera de los controladores, qué usuario hizo la solicitud actual (lo usa la auditoría).
+builder.Services.AddHttpContextAccessor();
+// Registra en el log cada alta, modificación y eliminación de datos con sus valores anteriores y nuevos.
+builder.Services.AddScoped<AuditoriaInterceptor>();
+
 // Configura Entity Framework Core para usar SQL Server con la cadena DefaultConnection.
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// El interceptor de auditoría se ejecuta en cada SaveChangesAsync() de cualquier servicio.
+builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+           .AddInterceptors(serviceProvider.GetRequiredService<AuditoriaInterceptor>()));
 
 // Registra servicios de negocio con ciclo de vida por solicitud HTTP.
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -80,6 +103,8 @@ builder.Services.AddScoped<IPuntosIOService, PuntosIOService>();
 // Servicio de consulta de vistas de medición y edición de lecturas con revalidación administrativa.
 builder.Services.AddScoped<IMedicion5MService, Medicion5MService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
+// Servicio para leer los archivos de log desde el endpoint /api/Logs.
+builder.Services.AddScoped<ILogService, LogService>();
 builder.Services.AddScoped<TokenService>();
 
 // Comprueba la configuración JWT antes de iniciar para evitar emitir tokens con datos incompletos.
@@ -138,7 +163,10 @@ app.UseHttpsRedirection();
 app.UseCors("Frontend");
 
 // Primero identifica al solicitante desde su token; luego comprueba sus permisos.
+// El registro de solicitudes va entre ambos: ya sabe quién es el usuario y alcanza a ver
+// las respuestas 401/403 que genera la autorización.
 app.UseAuthentication();
+app.UseMiddleware<RegistroSolicitudesMiddleware>();
 app.UseAuthorization();
 
 // Asocia las rutas declaradas en los controladores y comienza a escuchar solicitudes.
