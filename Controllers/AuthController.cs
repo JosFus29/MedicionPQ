@@ -21,11 +21,13 @@ namespace MedicionPQ.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly ILogger<AuthController> _logger;
 
-    /// <summary>Inicializa el controlador con el servicio de autenticación.</summary>
-    public AuthController(IAuthService authService)
+    /// <summary>Inicializa el controlador con el servicio de autenticación y el logger.</summary>
+    public AuthController(IAuthService authService, ILogger<AuthController> logger)
     {
         _authService = authService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -44,8 +46,12 @@ public class AuthController : ControllerBase
 
         if (!resultado.Exito)
         {
+            // Registra el correo del intento fallido (nunca la contraseña) para detectar accesos sospechosos.
+            _logger.LogWarning("Inicio de sesión fallido para {Correo}: {Motivo}", request.Correo, resultado.Mensaje);
             return Unauthorized(new { mensaje = resultado.Mensaje });
         }
+
+        _logger.LogInformation("Inicio de sesión exitoso: {Correo} ({Rol})", resultado.UsuarioInfo!.correo, resultado.UsuarioInfo.rol.ToString());
 
         var response = new LoginResponse
         {
