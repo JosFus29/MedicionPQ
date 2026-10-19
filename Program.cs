@@ -125,6 +125,9 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// Crea una sola vez el administrador inicial cuando se configura una contraseña de bootstrap externa.
+await BootstrapAdminSeeder.SeedAsync(app.Services);
+
 // En desarrollo habilita la interfaz de Swagger y el documento OpenAPI.
 if (app.Environment.IsDevelopment())
 {

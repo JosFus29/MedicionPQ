@@ -350,3 +350,16 @@ El nombre `VITE_API_BASE_URL` es una convención de ejemplo: el frontend debe le
 5. El front inicia sesión con `POST /api/Auth/login`, conserva el `token` de la respuesta y lo manda en solicitudes protegidas como `Authorization: Bearer <token>`. El front nunca recibe ni configura `Jwt:Key`.
 
 Cada integrante configura sus propios User Secrets en su equipo. Para desplegar, configura `Jwt__Key`, `Jwt__Issuer`, `Jwt__Audience` y la cadena de conexión como secretos/variables del entorno del backend; permite en CORS solo el origen HTTPS publicado del frontend. No reutilices el secreto local y no guardes secretos en Git.
+
+## Administrador inicial
+
+Después de crear la base de datos y la tabla `Usuario`, la API puede insertar el primer administrador durante el arranque. Configura temporalmente `BootstrapAdmin:Password` en User Secrets para desarrollo o `BootstrapAdmin__Password` como secreto/variable del backend en el despliegue. Opcionalmente configura `BootstrapAdmin:Email` / `BootstrapAdmin__Email`; si se omite, se usa `admin@gmail.com`.
+
+Ejemplo local, desde la carpeta del proyecto:
+
+```powershell
+dotnet user-secrets set "BootstrapAdmin:Email" "admin@gmail.com" --project .\MedicionPQ.csproj
+dotnet user-secrets set "BootstrapAdmin:Password" "<contraseña inicial>" --project .\MedicionPQ.csproj
+```
+
+Al iniciar, la API solo crea la cuenta si todavía no existe ningún administrador. Guarda la contraseña con `PasswordService`, por lo que el login puede verificarla con el mismo algoritmo. Si ya hay un administrador, no modifica ni duplica cuentas. Retira `BootstrapAdmin:Password` de la configuración después de crear la cuenta; la API no necesita ese secreto para los siguientes arranques. Esta inicialización inserta datos en una tabla ya creada, no reemplaza la creación del esquema de la base.
