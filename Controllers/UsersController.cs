@@ -75,4 +75,22 @@ public class UsersController : ControllerBase
 
         return Ok(usuario);
     }
+
+    /// <summary>
+    /// PUT /api/Users/{id}/contrasena
+    /// Asigna una contraseña nueva a un usuario que olvidó la suya. Solo administradores.
+    /// El administrador no puede ver la contraseña anterior porque solo se guarda su hash.
+    /// El cambio queda en el log de auditoría con el correo del administrador (sin la contraseña).
+    /// </summary>
+    /// <param name="id">Identificador del usuario.</param>
+    /// <param name="request">Contraseña nueva (mínimo 8 caracteres).</param>
+    [HttpPut("{id:int}/contrasena")]
+    [Authorize(Roles = "Administrador")]
+    public async Task<IActionResult> RestablecerContrasena(int id, [FromBody] RestablecerContrasenaRequest request)
+    {
+        var (exito, mensaje) = await _userService.RestablecerContrasenaAsync(id, request.NuevaContrasena);
+        if (!exito) return BadRequest(new { mensaje });
+
+        return Ok(new { mensaje });
+    }
 }

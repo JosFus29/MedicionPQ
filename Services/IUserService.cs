@@ -26,4 +26,10 @@ public interface IUserService
     /// <param name="request">Campos que se guardarán; no permite cambiar la contraseña.</param>
     /// <returns>Resultado de la operación, mensaje y DTO actualizado si tuvo éxito.</returns>
     Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> UpdateUserAsync(int id, UpdateUserRequest request);
+
+    /// <summary>Asigna una contraseña nueva a una cuenta existente (uso exclusivo de administradores).</summary>
+    /// <param name="id">Identificador de la cuenta.</param>
+    /// <param name="nuevaContrasena">Contraseña nueva en texto plano, que se convertirá en hash.</param>
+    /// <returns>Resultado de la operación y mensaje.</returns>
+    Task<(bool Exito, string Mensaje)> RestablecerContrasenaAsync(int id, string nuevaContrasena);
 }

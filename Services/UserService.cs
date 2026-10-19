@@ -138,4 +138,25 @@ public class UserService : IUserService
             tiempoSesion = usuario.tiempoSesion
         });
     }
+
+    /// <summary>
+    /// Reemplaza el hash de contraseña de una cuenta por el de una contraseña nueva.
+    /// La contraseña anterior no se puede consultar porque solo se guarda su hash.
+    /// </summary>
+    /// <param name="id">Identificador de la cuenta.</param>
+    /// <param name="nuevaContrasena">Contraseña nueva de al menos ocho caracteres.</param>
+    /// <returns>Resultado de la operación y mensaje.</returns>
+    public async Task<(bool Exito, string Mensaje)> RestablecerContrasenaAsync(int id, string nuevaContrasena)
+    {
+        if (string.IsNullOrWhiteSpace(nuevaContrasena) || nuevaContrasena.Length < 8)
+            return (false, "La contraseña debe tener al menos 8 caracteres.");
+
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.idUsuario == id);
+        if (usuario == null) return (false, "Usuario no encontrado.");
+
+        usuario.contrasena = _passwordService.HashPassword(nuevaContrasena);
+        await _context.SaveChangesAsync();
+
+        return (true, "Contraseña restablecida.");
+    }
 }

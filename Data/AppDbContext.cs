@@ -58,6 +58,11 @@ public class AppDbContext : DbContext
 
     /// <summary>Vista de promedios mensuales agrupados por año.</summary>
     public DbSet<Medicion5MPromedioAnioView> VistaMedicion5MPromedioAnio { get; set; }
+    /// <summary>
+    /// Tabla de variables eléctricas configuradas (Vars5M).
+    /// Define qué variables se miden, su unidad, código IHM, estado y número de fases.
+    /// </summary>
+    public DbSet<Vars5M> Vars5M { get; set; }
 
     /// <summary>Configura la relación de muchos medidores hacia un único controlador RF.</summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
