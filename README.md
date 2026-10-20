@@ -302,6 +302,16 @@ El token incluye identificador, correo, nombre y rol. Expira según `tiempoSesio
 
 `PUT /api/Users/{id}` recibe `correo`, `nombreUsuario`, `rol` (1 Administrador, 2 Usuario), `edo` (`true` activo) y `tiempoSesion` (1 a 1440 minutos). Todos los campos se envían como un objeto JSON. La contraseña no se modifica desde esta ruta.
 
+Solo un administrador autenticado puede asignar una contraseña nueva a cualquier cuenta, incluidas las cuentas de otros administradores, mediante `PUT /api/Users/{id}/contrasena`:
+
+```json
+{
+  "nuevaContrasena": "UnaNuevaClave123"
+}
+```
+
+La contraseña debe tener al menos 8 caracteres. La API genera el hash con el mismo servicio usado al crear usuarios y devuelve un mensaje, nunca la contraseña ni su hash. Las contraseñas existentes no se pueden consultar ni recuperar; el administrador puede reemplazarlas por una nueva. Un administrador sin sesión recibe `401` y una cuenta sin rol de administrador recibe `403`.
+
 Los usuarios se devuelven como DTO con `idUsuario`, `correo`, `nombreUsuario`, `rol`, `edo` y `tiempoSesion`; el hash nunca se devuelve.
 
 ## Organización del código

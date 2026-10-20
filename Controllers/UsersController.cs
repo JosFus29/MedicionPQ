@@ -80,7 +80,6 @@ public class UsersController : ControllerBase
     /// PUT /api/Users/{id}/contrasena
     /// Asigna una contraseña nueva a un usuario que olvidó la suya. Solo administradores.
     /// El administrador no puede ver la contraseña anterior porque solo se guarda su hash.
-    /// El cambio queda en el log de auditoría con el correo del administrador (sin la contraseña).
     /// </summary>
     /// <param name="id">Identificador del usuario.</param>
     /// <param name="request">Contraseña nueva (mínimo 8 caracteres).</param>
