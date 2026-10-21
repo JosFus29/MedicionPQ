@@ -27,7 +27,7 @@ public class UsersController : ControllerBase
     /// Requiere autenticación y que el token contenga el rol 'Administrador'.
     /// </summary>
     [HttpGet("admins")]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> GetAdministradores()
     {
         var admins = await _userService.GetAdministradoresAsync();
@@ -39,7 +39,7 @@ public class UsersController : ControllerBase
     /// Devuelve todos los usuarios. Solo administradores pueden acceder.
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> GetAll()
     {
         var users = await _userService.GetAllUsersAsync();
@@ -53,7 +53,7 @@ public class UsersController : ControllerBase
     /// <param name="request">Datos necesarios para crear el usuario (correo, contrasena, nombre y rol).</param>
     /// <returns>201 Created con el UsuarioDto del usuario creado o 400 BadRequest con mensaje en caso de error.</returns>
     [HttpPost]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
     {
         var (exito, mensaje, usuario) = await _userService.CreateUserAsync(request.Correo, request.Contrasena, request.NombreUsuario, request.Rol);
@@ -67,29 +67,12 @@ public class UsersController : ControllerBase
     /// Actualiza los datos de un usuario existente (no actualiza la contraseña). Solo administradores.
     /// </summary>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest request)
     {
         var (exito, mensaje, usuario) = await _userService.UpdateUserAsync(id, request);
         if (!exito) return BadRequest(new { mensaje });
 
         return Ok(usuario);
-    }
-
-    /// <summary>
-    /// PUT /api/Users/{id}/contrasena
-    /// Asigna una contraseña nueva a un usuario que olvidó la suya. Solo administradores.
-    /// El administrador no puede ver la contraseña anterior porque solo se guarda su hash.
-    /// </summary>
-    /// <param name="id">Identificador del usuario.</param>
-    /// <param name="request">Contraseña nueva (mínimo 8 caracteres).</param>
-    [HttpPut("{id:int}/contrasena")]
-    [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> RestablecerContrasena(int id, [FromBody] RestablecerContrasenaRequest request)
-    {
-        var (exito, mensaje) = await _userService.RestablecerContrasenaAsync(id, request.NuevaContrasena);
-        if (!exito) return BadRequest(new { mensaje });
-
-        return Ok(new { mensaje });
     }
 }

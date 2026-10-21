@@ -17,13 +17,13 @@ public class UserService : IUserService
         _passwordService = passwordService;
     }
 
-    /// <summary>Recupera las cuentas con rol Administrador, sin incluir hashes de contraseña.</summary>
-    /// <returns>Lista de administradores como DTO públicos.</returns>
+    /// <summary>Recupera las cuentas con rol Administrador o SuperAdministrador, sin hashes.</summary>
+    /// <returns>Lista de cuentas administrativas como DTO públicos.</returns>
     public async Task<List<UsuarioDto>> GetAdministradoresAsync()
     {
         return await _context.Usuarios
             .AsNoTracking()
-            .Where(u => u.rol == Usuario.TipoRol.Administrador)
+            .Where(u => u.rol == Usuario.TipoRol.Administrador || u.rol == Usuario.TipoRol.SuperAdministrador)
             .Select(u => new UsuarioDto
             {
                 idUsuario = u.idUsuario,
@@ -53,6 +53,13 @@ public class UserService : IUserService
             })
             .ToListAsync();
     }
+
+    /// <summary>Crea una cuenta pública con rol Usuario sin aceptar un rol desde la solicitud.</summary>
+    public Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> RegisterAsync(
+        string correo,
+        string contrasena,
+        string nombreUsuario) =>
+        CreateUserAsync(correo, contrasena, nombreUsuario, Usuario.TipoRol.Usuario);
 
     /// <summary>Valida los datos, evita correos duplicados, aplica hash y guarda una nueva cuenta.</summary>
     /// <param name="correo">Correo único de la cuenta.</param>

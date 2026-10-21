@@ -13,6 +13,9 @@ public interface IUserService
     /// <returns>Lista pública de usuarios.</returns>
     Task<List<UsuarioDto>> GetAllUsersAsync();
 
+    /// <summary>Registra públicamente una cuenta y asigna siempre el rol Usuario.</summary>
+    Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> RegisterAsync(string correo, string contrasena, string nombreUsuario);
+
     /// <summary>Valida y registra una cuenta nueva.</summary>
     /// <param name="correo">Correo único para iniciar sesión.</param>
     /// <param name="contrasena">Contraseña en texto plano, que se convertirá en hash.</param>

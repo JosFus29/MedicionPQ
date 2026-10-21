@@ -40,7 +40,7 @@ namespace MedicionPQ.Controllers
         /// <param name="id">Identificador de la variable (idVar5M) a actualizar.</param>
         /// <param name="datos">Nuevos valores de edo y fases.</param>
         [HttpPut("{id}")]
-        [Authorize(Roles = "Administrador")]
+        [Authorize(Roles = "SuperAdministrador,Administrador")]
         public async Task<ActionResult<Vars5M>> Update(int id, [FromBody] UpdateVars5MRequest datos)
         {
             var actualizado = await _vars5MService.UpdateAsync(id, datos);

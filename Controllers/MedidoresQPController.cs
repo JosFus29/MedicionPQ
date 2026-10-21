@@ -8,7 +8,7 @@ namespace MedicionPQ.Controllers;
 /// <summary>Rutas administrativas para dar de alta y editar medidores QP.</summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Administrador")]
+[Authorize(Roles = "SuperAdministrador,Administrador")]
 public class MedidoresQPController : ControllerBase
 {
     private readonly IMedidorQPService _service;

@@ -30,7 +30,7 @@ public class UnidadesController : ControllerBase
 
     /// <summary>Agrega una unidad; solo el rol Administrador puede ejecutar esta acción.</summary>
     [HttpPost]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> Create([FromBody] UnidadRequest request)
     {
         var unidad = await _service.CreateAsync(request);
@@ -39,7 +39,7 @@ public class UnidadesController : ControllerBase
 
     /// <summary>Actualiza una unidad existente; solo el rol Administrador puede editar.</summary>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> Update(int id, [FromBody] UnidadRequest request)
     {
         var unidad = await _service.UpdateAsync(id, request);

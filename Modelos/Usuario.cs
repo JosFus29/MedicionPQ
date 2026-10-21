@@ -47,10 +47,12 @@ public class Usuario
     /// </summary>
     public enum TipoRol : byte
     {
-        /// <summary>Puede acceder a las operaciones de administración.</summary>
+        /// <summary>Administrador con permisos administrativos, excepto editar PuntosIO.</summary>
         Administrador = 1,
         /// <summary>Cuenta sin permisos administrativos.</summary>
-        Usuario = 2
+        Usuario = 2,
+        /// <summary>Superadministrador con todos los permisos, incluida la edición de PuntosIO.</summary>
+        SuperAdministrador = 5
     }
 
     /// <summary>

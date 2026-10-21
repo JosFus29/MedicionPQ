@@ -30,7 +30,7 @@ public class IO_GrupoElectricoController : ControllerBase
 
     /// <summary>Agrega un grupo eléctrico; solo un administrador puede hacerlo.</summary>
     [HttpPost]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> Create([FromBody] IO_GrupoRequest request)
     {
         var grupo = await _service.CreateAsync(request);
@@ -39,7 +39,7 @@ public class IO_GrupoElectricoController : ControllerBase
 
     /// <summary>Edita nombre y estado; solo un administrador puede hacerlo.</summary>
     [HttpPut("{idGE:int}")]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> Update(int idGE, [FromBody] IO_GrupoRequest request)
     {
         var grupo = await _service.UpdateAsync(idGE, request);

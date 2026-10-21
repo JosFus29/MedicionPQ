@@ -10,7 +10,7 @@ namespace MedicionPQ.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Administrador")]
+[Authorize(Roles = "SuperAdministrador,Administrador")]
 public class LogsController : ControllerBase
 {
     /// <summary>Niveles que se pueden usar como filtro.</summary>

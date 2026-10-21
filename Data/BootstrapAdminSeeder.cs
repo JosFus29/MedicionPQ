@@ -7,13 +7,13 @@ using Microsoft.EntityFrameworkCore;
 namespace MedicionPQ.Data;
 
 /// <summary>
-/// Crea un administrador inicial una sola vez cuando se configura BootstrapAdmin:Password.
+/// Crea un SuperAdministrador inicial una sola vez cuando se configura BootstrapAdmin:Password.
 /// La contraseña se obtiene de configuración externa y se guarda únicamente como hash.
 /// </summary>
 public static class BootstrapAdminSeeder
 {
     /// <summary>
-    /// Si la base aún no tiene administradores, crea el primero. En reinicios posteriores
+    /// Si la base aún no tiene SuperAdministrador, crea el primero. En reinicios posteriores
     /// detecta la cuenta existente y no cambia sus datos ni su contraseña.
     /// </summary>
     public static async Task SeedAsync(IServiceProvider services)
@@ -44,10 +44,10 @@ public static class BootstrapAdminSeeder
         // Serializa el arranque de varias instancias para evitar que creen administradores a la vez.
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-        if (await db.Usuarios.AnyAsync(user => user.rol == Usuario.TipoRol.Administrador))
+        if (await db.Usuarios.AnyAsync(user => user.rol == Usuario.TipoRol.SuperAdministrador))
         {
             await transaction.RollbackAsync();
-            logger.LogInformation("Ya existe un administrador; se omite la creación de la cuenta inicial.");
+            logger.LogInformation("Ya existe un SuperAdministrador; se omite la creación de la cuenta inicial.");
             return;
         }
 
@@ -61,8 +61,8 @@ public static class BootstrapAdminSeeder
             contrasena = passwordService.HashPassword(configuredPassword),
             tiempoSesion = 30,
             edo = true,
-            nombreUsuario = "Administrador",
-            rol = Usuario.TipoRol.Administrador
+            nombreUsuario = "SuperAdministrador",
+            rol = Usuario.TipoRol.SuperAdministrador
         });
 
         await db.SaveChangesAsync();

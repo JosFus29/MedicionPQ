@@ -21,13 +21,39 @@ namespace MedicionPQ.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly IUserService _userService;
     private readonly ILogger<AuthController> _logger;
 
     /// <summary>Inicializa el controlador con el servicio de autenticación y el logger.</summary>
-    public AuthController(IAuthService authService, ILogger<AuthController> logger)
+    public AuthController(IAuthService authService, IUserService userService, ILogger<AuthController> logger)
     {
         _authService = authService;
+        _userService = userService;
         _logger = logger;
+    }
+
+    /// <summary>Registra una cuenta pública con rol Usuario. El cliente no puede elegir el rol.</summary>
+    [HttpPost("register")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Register([FromBody] RegistroRequest request)
+    {
+        var (exito, mensaje, usuario) = await _userService.RegisterAsync(
+            request.Correo,
+            request.Contrasena,
+            request.NombreUsuario);
+
+        if (!exito)
+        {
+            if (mensaje.StartsWith("Ya existe un usuario", StringComparison.Ordinal))
+                return Conflict(new { mensaje });
+
+            return BadRequest(new { mensaje });
+        }
+
+        return StatusCode(StatusCodes.Status201Created, new { mensaje, usuario });
     }
 
     /// <summary>

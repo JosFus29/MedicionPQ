@@ -30,7 +30,7 @@ public class ControladorRFController : ControllerBase
 
     /// <summary>Registra un controlador RF. Solo está permitido para el rol Administrador.</summary>
     [HttpPost]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> Create([FromBody] ControladorRFRequest request)
     {
         if (request.Edo is not (10 or 11 or 20))
@@ -42,7 +42,7 @@ public class ControladorRFController : ControllerBase
 
     /// <summary>Actualiza un controlador RF existente. Solo está permitido para el rol Administrador.</summary>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> Update(int id, [FromBody] ControladorRFRequest request)
     {
         if (request.Edo is not (10 or 11 or 20))

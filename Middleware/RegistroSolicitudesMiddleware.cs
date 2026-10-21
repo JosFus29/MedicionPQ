@@ -30,13 +30,6 @@ public class RegistroSolicitudesMiddleware
     /// <param name="context">Contexto HTTP de la solicitud actual.</param>
     public async Task InvokeAsync(HttpContext context)
     {
-        // Las páginas de Swagger y OpenAPI generan muchas solicitudes que no son acciones de usuarios.
-        if (context.Request.Path.StartsWithSegments("/swagger") || context.Request.Path.StartsWithSegments("/openapi"))
-        {
-            await _next(context);
-            return;
-        }
-
         var cronometro = Stopwatch.StartNew();
 
         try

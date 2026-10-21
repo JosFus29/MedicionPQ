@@ -30,7 +30,7 @@ public class PuntosIOService : IPuntosIOService
     {
         var usuario = await _context.Usuarios.AsNoTracking()
             .FirstOrDefaultAsync(u => u.idUsuario == idUsuario);
-        if (usuario is null || !usuario.edo || usuario.rol != Usuario.TipoRol.Administrador ||
+        if (usuario is null || !usuario.edo || usuario.rol != Usuario.TipoRol.SuperAdministrador ||
             !_passwordService.VerifyPassword(usuario.contrasena, request.ContrasenaActual))
             return new(null, PuntosIOUpdateError.CredencialesInvalidas);
 

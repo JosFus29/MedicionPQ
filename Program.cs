@@ -158,6 +158,11 @@ await using (var scope = app.Services.CreateAsyncScope())
     await BootstrapAdminSeeder.SeedAsync(scope.ServiceProvider);
 }
 
+// Autentica primero para adjuntar identidad cuando exista; registra después toda petición HTTP,
+// incluidas las que luego responda Swagger, HTTPS, CORS o autorización.
+app.UseAuthentication();
+app.UseMiddleware<RegistroSolicitudesMiddleware>();
+
 // En desarrollo habilita la interfaz de Swagger y el documento OpenAPI.
 if (app.Environment.IsDevelopment())
 {
@@ -170,11 +175,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors("Frontend");
 
-// Primero identifica al solicitante desde su token; luego comprueba sus permisos.
-// El registro de solicitudes va entre ambos: ya sabe quién es el usuario y alcanza a ver
-// las respuestas 401/403 que genera la autorización.
-app.UseAuthentication();
-app.UseMiddleware<RegistroSolicitudesMiddleware>();
+// Comprueba los permisos después del registro para que también queden logueadas las respuestas 401/403.
 app.UseAuthorization();
 
 // Asocia las rutas declaradas en los controladores y comienza a escuchar solicitudes.

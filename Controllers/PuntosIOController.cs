@@ -30,11 +30,11 @@ public class PuntosIOController : ControllerBase
     }
 
     /// <summary>
-    /// Actualiza un punto IO. Solo administradores pueden llamar esta ruta y deben volver a enviar
+    /// Actualiza un punto IO. Solo SuperAdministradores pueden llamar esta ruta y deben volver a enviar
     /// su contraseña actual en el cuerpo; la API la verifica contra el hash almacenado.
     /// </summary>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador")]
     public async Task<IActionResult> Update(int id, [FromBody] PuntosIOUpdateRequest request)
     {
         var claimId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

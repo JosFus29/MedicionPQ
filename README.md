@@ -31,7 +31,7 @@ En desarrollo, `appsettings.Development.json` permite el origen Vite `http://loc
 
 No uses `*` con credenciales. La API no habilita CORS para ningún origen mientras la lista esté vacía. CORS aplica a navegadores; no reemplaza la autenticación.
 
-En Windows y solo en desarrollo, ASP.NET Core guarda las llaves de Data Protection en `.dataprotection-keys/` dentro del proyecto. La carpeta está excluida de Git y evita reutilizar llaves heredadas de otra cuenta de Windows. Se guardan sin cifrado de reposo; conserva los permisos locales y configura un almacén persistente y cifrado para producción. Los logs de desarrollo se envían a la consola.
+En Windows y solo en desarrollo, ASP.NET Core guarda las llaves de Data Protection en `.dataprotection-keys/` dentro del proyecto. La carpeta está excluida de Git y evita reutilizar llaves heredadas de otra cuenta de Windows. Se guardan sin cifrado de reposo; conserva los permisos locales y configura un almacén persistente y cifrado para producción. Los logs de desarrollo se envían a la consola. Serilog escribe en consola y en `Logs/log-AAAAMMDD.txt` y conserva 30 archivos diarios. `RegistroSolicitudesMiddleware` registra cada petición HTTP, incluidos login/registro, Swagger/OpenAPI, redirecciones HTTPS y respuestas CORS/401/403: usuario y rol si están autenticados, método, ruta, código HTTP y duración. No registra cuerpos, contraseñas ni tokens.
 
 ## Ejecutar
 
@@ -43,14 +43,17 @@ En Development, Swagger UI está en `/swagger` y OpenAPI en `/openapi/v1.json`. 
 
 ## Endpoints
 
+Los roles son `SuperAdministrador` (`5`), `Administrador` (`1`) y `Usuario` (`2`). Las rutas marcadas para Administrador aceptan tanto Administrador como SuperAdministrador. El SuperAdministrador conserva todos los permisos administrativos, incluido editar PuntosIO; Administrador no puede editar PuntosIO. Usuario conserva permisos de consulta.
+
 La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `IdUsuario` se devuelve como `idUsuario`). Los nombres ya escritos en camel case, como `correo` e `idUsuario`, conservan ese formato. Las solicitudes JSON deben enviarse con `Content-Type: application/json`.
 
 | Método y ruta | Acceso | Descripción |
 | --- | --- | --- |
 | `POST /api/Auth/login` | Público | Valida correo y contraseña; devuelve JWT e ID de usuario. |
+| `POST /api/Auth/register` | Público | Registra una cuenta nueva con rol Usuario; no acepta roles desde el cliente. Devuelve `201`. |
 | `POST /api/Auth/renew` | Usuario autenticado | Renueva el JWT cuando quedan 60 segundos o menos. |
 | `GET /api/Users` | Administrador | Lista usuarios sin exponer hashes de contraseña. |
-| `GET /api/Users/admins` | Administrador | Lista solo usuarios con rol Administrador. |
+| `GET /api/Users/admins` | Administrador | Lista usuarios con rol Administrador o SuperAdministrador. |
 | `POST /api/Users` | Administrador | Crea un usuario con contraseña hasheada. Devuelve `201` y el DTO creado. |
 | `PUT /api/Users/{id}` | Administrador | Actualiza correo, nombre, rol, estado y duración de sesión; no cambia contraseña. |
 | `GET /api/ControladorRF` | Usuario autenticado | Lista los controladores RF. |
@@ -77,7 +80,7 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | `PUT /api/IO_GrupoFuncional/{id}` | Administrador | Actualiza un grupo funcional. |
 | `GET /api/PuntosIO` | Usuario autenticado | Lista puntos IO. |
 | `GET /api/PuntosIO/{id}` | Usuario autenticado | Consulta un punto IO. |
-| `PUT /api/PuntosIO/{id}` | Administrador | Edita un punto después de verificar nuevamente su contraseña. |
+| `PUT /api/PuntosIO/{id}` | SuperAdministrador | Edita un punto después de verificar nuevamente su contraseña. |
 | `GET /api/Medicion5M/crudo` | Usuario autenticado | Consulta lecturas de cinco minutos por medidor, variable, fechas y fase. |
 | `GET /api/Medicion5M/promedio-hora` | Usuario autenticado | Consulta promedios horarios. |
 | `GET /api/Medicion5M/promedio-dia` | Usuario autenticado | Consulta promedios diarios. |
@@ -182,7 +185,7 @@ El `PUT` recibe los mismos campos. El detalle de un ID inexistente devuelve `404
 
 ### Puntos IO
 
-Cualquier usuario autenticado puede consultar `GET /api/PuntosIO` y `GET /api/PuntosIO/{id}`. Solo un administrador puede editar con `PUT /api/PuntosIO/{id}`. Antes de guardar, la API vuelve a verificar `contrasenaActual` contra el hash de la cuenta autenticada; una contraseña incorrecta devuelve `401`. La contraseña se usa solo para la verificación y nunca forma parte de la respuesta ni se guarda en `PuntosIO`.
+Cualquier usuario autenticado puede consultar `GET /api/PuntosIO` y `GET /api/PuntosIO/{id}`. Solo SuperAdministrador puede editar con `PUT /api/PuntosIO/{id}`. Antes de guardar, la API vuelve a verificar `contrasenaActual` contra el hash de la cuenta autenticada; una contraseña incorrecta devuelve `401`. La contraseña se usa solo para la verificación y nunca forma parte de la respuesta ni se guarda en `PuntosIO`.
 
 El cuerpo del `PUT` contiene `idGF`, `idGE`, `idUnidad`, `tag` (máximo 30 caracteres), `descripcion` (máximo 150), `tipoDato` (máximo 20), `tipoReg` (máximo 5), `dirCCEC`, `dirMB`, `edo`, `limMin`, `limMax` y `contrasenaActual`. Los IDs de grupo y unidad deben existir; si alguna referencia no existe, responde `400`. Un punto inexistente devuelve `404`.
 
@@ -298,19 +301,11 @@ El token incluye identificador, correo, nombre y rol. Expira según `tiempoSesio
 
 ### Crear y actualizar usuarios
 
-`POST /api/Users` recibe `correo`, `contrasena`, `nombreUsuario` y `rol` (opcional; por defecto `Usuario`). El enum se envía como número: `1` para Administrador y `2` para Usuario. La contraseña requiere al menos 8 caracteres.
+`POST /api/Users` recibe `correo`, `contrasena`, `nombreUsuario` y `rol` (opcional; por defecto `Usuario`). El enum se envía como número: `5` para SuperAdministrador, `1` para Administrador y `2` para Usuario. La contraseña requiere al menos 8 caracteres.
 
-`PUT /api/Users/{id}` recibe `correo`, `nombreUsuario`, `rol` (1 Administrador, 2 Usuario), `edo` (`true` activo) y `tiempoSesion` (1 a 1440 minutos). Todos los campos se envían como un objeto JSON. La contraseña no se modifica desde esta ruta.
+`PUT /api/Users/{id}` recibe `correo`, `nombreUsuario`, `rol` (5 SuperAdministrador, 1 Administrador, 2 Usuario), `edo` (`true` activo) y `tiempoSesion` (1 a 1440 minutos). Todos los campos se envían como un objeto JSON. La contraseña no se modifica desde esta ruta.
 
-Solo un administrador autenticado puede asignar una contraseña nueva a cualquier cuenta, incluidas las cuentas de otros administradores, mediante `PUT /api/Users/{id}/contrasena`:
-
-```json
-{
-  "nuevaContrasena": "UnaNuevaClave123"
-}
-```
-
-La contraseña debe tener al menos 8 caracteres. La API genera el hash con el mismo servicio usado al crear usuarios y devuelve un mensaje, nunca la contraseña ni su hash. Las contraseñas existentes no se pueden consultar ni recuperar; el administrador puede reemplazarlas por una nueva. Un administrador sin sesión recibe `401` y una cuenta sin rol de administrador recibe `403`.
+Cualquier persona puede registrarse mediante `POST /api/Auth/register`, enviando `correo`, `contrasena` (mínimo 8 caracteres) y `nombreUsuario`. El endpoint asigna siempre el rol `Usuario`, aunque el cliente incluya un campo `rol`; los correos duplicados devuelven `409` y los datos inválidos `400`. La contraseña se guarda con hash. No existe un endpoint administrativo para cambiar la contraseña de una cuenta existente. El alta administrativa mediante `POST /api/Users` sigue disponible para crear cuentas con los roles que gestione el personal autorizado.
 
 Los usuarios se devuelven como DTO con `idUsuario`, `correo`, `nombreUsuario`, `rol`, `edo` y `tiempoSesion`; el hash nunca se devuelve.
 
@@ -363,7 +358,7 @@ Cada integrante configura sus propios User Secrets en su equipo. Para desplegar,
 
 ## Administrador inicial
 
-Después de crear la base de datos y la tabla `Usuario`, la API puede insertar el primer administrador durante el arranque. Configura temporalmente `BootstrapAdmin:Password` en User Secrets para desarrollo o `BootstrapAdmin__Password` como secreto/variable del backend en el despliegue. Opcionalmente configura `BootstrapAdmin:Email` / `BootstrapAdmin__Email`; si se omite, se usa `admin@gmail.com`.
+Después de crear la base de datos y la tabla `Usuario`, la API puede insertar el primer SuperAdministrador durante el arranque. Configura temporalmente `BootstrapAdmin:Password` en User Secrets para desarrollo o `BootstrapAdmin__Password` como secreto/variable del backend en el despliegue. Opcionalmente configura `BootstrapAdmin:Email` / `BootstrapAdmin__Email`; si se omite, se usa `admin@gmail.com`.
 
 Ejemplo local, desde la carpeta del proyecto:
 
@@ -372,4 +367,4 @@ dotnet user-secrets set "BootstrapAdmin:Email" "admin@gmail.com" --project .\Med
 dotnet user-secrets set "BootstrapAdmin:Password" "<contraseña inicial>" --project .\MedicionPQ.csproj
 ```
 
-Al iniciar, la API solo crea la cuenta si todavía no existe ningún administrador. Guarda la contraseña con `PasswordService`, por lo que el login puede verificarla con el mismo algoritmo. Si ya hay un administrador, no modifica ni duplica cuentas. Retira `BootstrapAdmin:Password` de la configuración después de crear la cuenta; la API no necesita ese secreto para los siguientes arranques. Esta inicialización inserta datos en una tabla ya creada, no reemplaza la creación del esquema de la base.
+Al iniciar, la API crea la cuenta si todavía no existe ningún SuperAdministrador. Guarda la contraseña con `PasswordService`, por lo que el login puede verificarla con el mismo algoritmo. Si ya hay un SuperAdministrador, no modifica ni duplica cuentas. Retira `BootstrapAdmin:Password` de la configuración después de crear la cuenta; la API no necesita ese secreto para los siguientes arranques. Esta inicialización inserta datos en una tabla ya creada, no reemplaza la creación del esquema de la base.

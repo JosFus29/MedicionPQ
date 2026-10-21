@@ -30,7 +30,7 @@ public class EventosConfigController : ControllerBase
 
     /// <summary>Agrega un evento; solo el rol Administrador puede ejecutar esta acción.</summary>
     [HttpPost]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> Create([FromBody] EventosConfigRequest request)
     {
         var (evento, error) = await _service.CreateAsync(request);
@@ -40,7 +40,7 @@ public class EventosConfigController : ControllerBase
 
     /// <summary>Reemplaza los datos de un evento existente; solo el rol Administrador puede editar.</summary>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> Update(int id, [FromBody] EventosConfigRequest request)
     {
         var (evento, error) = await _service.UpdateAsync(id, request);

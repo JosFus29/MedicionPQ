@@ -30,7 +30,7 @@ public class EventosRegController : ControllerBase
 
     /// <summary>Agrega un registro; solo el rol Administrador puede ejecutar esta acción.</summary>
     [HttpPost]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> Create([FromBody] EventosRegCreateRequest request)
     {
         var registro = await _service.CreateAsync(request);
@@ -45,7 +45,7 @@ public class EventosRegController : ControllerBase
 
     /// <summary>Actualiza el consumo; la clave compuesta, incluida la fecha, no se modifica.</summary>
     [HttpPut("{idMedidor:int}/{idCtrlRF:int}/{idEvento:int}/{fecha}")]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> Update(int idMedidor, int idCtrlRF, int idEvento, DateOnly fecha, [FromBody] EventosRegUpdateRequest request)
     {
         var registro = await _service.UpdateAsync(idMedidor, idCtrlRF, idEvento, fecha, request);
