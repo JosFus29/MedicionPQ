@@ -27,10 +27,15 @@ builder.Host.UseSerilog((context, configuracion) => configuracion
     // Las excepciones no controladas ya las registra RegistroSolicitudesMiddleware; esto evita duplicarlas.
     .MinimumLevel.Override("Microsoft.AspNetCore.Diagnostics", LogEventLevel.Fatal)
     .WriteTo.Console(outputTemplate: formatoLog)
+    // shared: true abre el archivo en modo compartido, para que otros programas (Bloc de notas, VS Code)
+    // puedan leerlo mientras la API está corriendo.
+    // flushToDiskInterval asegura que cada entrada llegue al disco en máximo 1 segundo.
     .WriteTo.File(
         Path.Combine(context.HostingEnvironment.ContentRootPath, "Logs", "log-.txt"),
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30,
+        shared: true,
+        flushToDiskInterval: TimeSpan.FromSeconds(1),
         outputTemplate: formatoLog));
 
 // Aísla las llaves de desarrollo en el proyecto para no reutilizar un key ring DPAPI incompatible.
