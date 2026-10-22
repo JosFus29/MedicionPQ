@@ -59,7 +59,7 @@ public static class BootstrapAdminSeeder
         {
             correo = email,
             contrasena = passwordService.HashPassword(configuredPassword),
-            tiempoSesion = 30,
+            tiempoSesion = 60,
             edo = true,
             nombreUsuario = "SuperAdministrador",
             rol = Usuario.TipoRol.SuperAdministrador
