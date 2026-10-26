@@ -1,0 +1,15 @@
+{
+  "SerialParams": {
+    "COM": "COM3",
+    "BaudRate": 38400,
+    "Paridad": 0,
+    "BitsDatos": 8,
+    "BitsParo": 1,
+    "Timeout": 5000
+  },
+  "EthernetParams": {
+    "Ip": "000.000.000.000",
+    "Port": 1000,
+    "Timeout": 6000
+  }
+}

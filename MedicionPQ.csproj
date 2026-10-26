@@ -42,5 +42,8 @@
       <HintPath>..\ComsPQLibrary\ComsPQLibrary.dll</HintPath>
     </Reference>
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Controllers\Medidores\" />
+  </ItemGroup>
 
 </Project>
