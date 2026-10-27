@@ -35,4 +35,11 @@ public interface IUserService
     /// <param name="nuevaContrasena">Contraseña nueva en texto plano, que se convertirá en hash.</param>
     /// <returns>Resultado de la operación y mensaje.</returns>
     Task<(bool Exito, string Mensaje)> RestablecerContrasenaAsync(int id, string nuevaContrasena);
+
+    /// <summary>Permite que un usuario con sesión iniciada cambie su propia contraseña conociendo la actual.</summary>
+    /// <param name="id">Identificador de la cuenta (tomado del token JWT).</param>
+    /// <param name="contrasenaActual">Contraseña que el usuario tiene actualmente.</param>
+    /// <param name="nuevaContrasena">Contraseña nueva en texto plano, que se convertirá en hash.</param>
+    /// <returns>Resultado de la operación y mensaje.</returns>
+    Task<(bool Exito, string Mensaje)> CambiarContrasenaAsync(int id, string contrasenaActual, string nuevaContrasena);
 }

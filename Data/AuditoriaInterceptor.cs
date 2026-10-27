@@ -148,9 +148,17 @@ public class AuditoriaInterceptor : SaveChangesInterceptor
         _altasPendientes.Clear();
     }
 
-    /// <summary>Correo del usuario del token JWT; "sistema" si el cambio no viene de una solicitud HTTP.</summary>
+    /// <summary>
+    /// Correo del usuario del token JWT; "anonimo" si la solicitud no trae token
+    /// (por ejemplo, la recuperación de contraseña) y "sistema" si el cambio no viene de una solicitud HTTP.
+    /// </summary>
     private string ObtenerUsuario()
-        => _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Email)?.Value ?? "sistema";
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext is null) return "sistema";
+
+        return httpContext.User.FindFirst(ClaimTypes.Email)?.Value ?? "anonimo";
+    }
 
     /// <summary>Nombre de la tabla en SQL Server (o de la clase, si no tiene tabla asignada).</summary>
     private static string NombreTabla(EntityEntry entrada)
@@ -165,10 +173,14 @@ public class AuditoriaInterceptor : SaveChangesInterceptor
         return string.Join(", ", llave.Properties.Select(p => $"{p.Name}={Formatear(entrada.Property(p.Name).CurrentValue)}"));
     }
 
-    /// <summary>Indica si una columna guarda una contraseña, para no escribir su valor en el log.</summary>
+    /// <summary>
+    /// Indica si una columna guarda una contraseña o un hash (por ejemplo <c>codigoHash</c> de RecuperacionContrasena),
+    /// para no escribir su valor en el log.
+    /// </summary>
     private static bool EsSensible(string nombrePropiedad)
         => nombrePropiedad.Contains("contrasena", StringComparison.OrdinalIgnoreCase)
-        || nombrePropiedad.Contains("password", StringComparison.OrdinalIgnoreCase);
+        || nombrePropiedad.Contains("password", StringComparison.OrdinalIgnoreCase)
+        || nombrePropiedad.Contains("hash", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Convierte un valor a texto legible: textos entre comillas, booleanos en minúscula y fechas con formato fijo.</summary>
     private static string Formatear(object? valor) => valor switch

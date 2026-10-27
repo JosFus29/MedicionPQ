@@ -166,4 +166,32 @@ public class UserService : IUserService
 
         return (true, "Contraseña restablecida.");
     }
+
+    /// <summary>
+    /// Cambia la contraseña de una cuenta activa después de comprobar la contraseña actual.
+    /// La nueva debe tener al menos ocho caracteres y ser distinta de la actual.
+    /// </summary>
+    /// <param name="id">Identificador de la cuenta (tomado del token JWT).</param>
+    /// <param name="contrasenaActual">Contraseña que el usuario tiene actualmente.</param>
+    /// <param name="nuevaContrasena">Contraseña nueva de al menos ocho caracteres.</param>
+    /// <returns>Resultado de la operación y mensaje.</returns>
+    public async Task<(bool Exito, string Mensaje)> CambiarContrasenaAsync(int id, string contrasenaActual, string nuevaContrasena)
+    {
+        if (string.IsNullOrWhiteSpace(nuevaContrasena) || nuevaContrasena.Length < 8)
+            return (false, "La contraseña nueva debe tener al menos 8 caracteres.");
+
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.idUsuario == id);
+        if (usuario == null || !usuario.edo) return (false, "Usuario no encontrado o inactivo.");
+
+        if (!_passwordService.VerifyPassword(usuario.contrasena, contrasenaActual))
+            return (false, "La contraseña actual no es correcta.");
+
+        if (_passwordService.VerifyPassword(usuario.contrasena, nuevaContrasena))
+            return (false, "La contraseña nueva debe ser distinta de la actual.");
+
+        usuario.contrasena = _passwordService.HashPassword(nuevaContrasena);
+        await _context.SaveChangesAsync();
+
+        return (true, "Contraseña actualizada.");
+    }
 }

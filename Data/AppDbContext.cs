@@ -41,6 +41,12 @@ public class AppDbContext : DbContext
     /// <summary>Conjunto de puntos de entrada/salida asociado a la tabla <c>PuntosIO</c>.</summary>
     public DbSet<PuntosIO> PuntosIO { get; set; }
 
+    /// <summary>
+    /// Códigos de recuperación de contraseña asociados a la tabla <c>RecuperacionContrasena</c>.
+    /// Solo guarda el hash de cada código, su vencimiento y si ya se usó.
+    /// </summary>
+    public DbSet<RecuperacionContrasena> RecuperacionesContrasena { get; set; }
+
     /// <summary>Vista de lecturas crudas cada cinco minutos.</summary>
     public DbSet<Medicion5MView> VistaMedicion5M { get; set; }
 
