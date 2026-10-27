@@ -10,6 +10,7 @@ using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Events;
 using System.Text;
+using MedicionPQ.Modelos.Medidores;
 
 // Punto de entrada: configura los servicios y el flujo HTTP de la API.
 var builder = WebApplication.CreateBuilder(args);
