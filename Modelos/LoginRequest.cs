@@ -16,6 +16,6 @@ public class LoginRequest
     /// Contraseña en texto plano que el usuario proporciona al autenticarse.
     /// El servidor la verificará contra el hash almacenado.
     /// </summary>
-    [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.MinLength(8)]
+    [System.ComponentModel.DataAnnotations.Required]
     public string Contrasena { get; set; } = string.Empty;
 }

@@ -76,7 +76,7 @@ public class UserService : IUserService
         nombreUsuario = nombreUsuario.Trim();
         var emailAttr = new System.ComponentModel.DataAnnotations.EmailAddressAttribute();
         if (!emailAttr.IsValid(correo)) return (false, "Correo inválido.", null);
-        if (contrasena.Length < 8) return (false, "La contraseña debe tener al menos 8 caracteres.", null);
+        if (!PasswordPolicy.IsValid(contrasena)) return (false, PasswordPolicy.ErrorMessage, null);
         if (!Enum.IsDefined(rol)) return (false, "Rol inválido.", null);
 
         var existente = await _context.Usuarios.AnyAsync(u => u.correo == correo);
@@ -109,23 +109,31 @@ public class UserService : IUserService
     /// <summary>Actualiza los campos editables de una cuenta existente; no cambia su contraseña.</summary>
     /// <param name="id">Identificador de la cuenta.</param>
     /// <param name="request">Valores nuevos de correo, nombre, rol, estado y duración de sesión.</param>
+    /// <param name="rolSolicitante">Rol obtenido del JWT para aplicar las restricciones sobre cuentas SuperAdministrador.</param>
     /// <returns>Resultado de la operación, mensaje y DTO actualizado si tiene éxito.</returns>
-    public async Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> UpdateUserAsync(int id, UpdateUserRequest request)
+    public async Task<(bool Exito, bool Prohibido, string Mensaje, UsuarioDto? Usuario)> UpdateUserAsync(
+        int id,
+        UpdateUserRequest request,
+        Usuario.TipoRol rolSolicitante)
     {
         var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.idUsuario == id);
-        if (usuario == null) return (false, "Usuario no encontrado.", null);
+        if (usuario == null) return (false, false, "Usuario no encontrado.", null);
+
+        if (rolSolicitante != Usuario.TipoRol.SuperAdministrador &&
+            (usuario.rol == Usuario.TipoRol.SuperAdministrador || request.Rol == Usuario.TipoRol.SuperAdministrador))
+            return (false, true, "Solo un SuperAdministrador puede editar cuentas de SuperAdministrador o asignar ese rol.", null);
 
         var correoNormalizado = request.Correo?.Trim().ToLowerInvariant();
         var nombreNormalizado = request.NombreUsuario?.Trim();
         var emailAttr = new System.ComponentModel.DataAnnotations.EmailAddressAttribute();
         if (string.IsNullOrWhiteSpace(correoNormalizado) || !emailAttr.IsValid(correoNormalizado))
-            return (false, "Correo inválido.", null);
-        if (string.IsNullOrWhiteSpace(nombreNormalizado)) return (false, "Nombre de usuario requerido.", null);
-        if (!Enum.IsDefined(request.Rol)) return (false, "Rol inválido.", null);
-        if (request.TiempoSesion is < 1 or > 1440) return (false, "El tiempo de sesión debe estar entre 1 y 1440 minutos.", null);
+            return (false, false, "Correo inválido.", null);
+        if (string.IsNullOrWhiteSpace(nombreNormalizado)) return (false, false, "Nombre de usuario requerido.", null);
+        if (!Enum.IsDefined(request.Rol)) return (false, false, "Rol inválido.", null);
+        if (request.TiempoSesion is < 1 or > 1440) return (false, false, "El tiempo de sesión debe estar entre 1 y 1440 minutos.", null);
 
         var otro = await _context.Usuarios.FirstOrDefaultAsync(u => u.correo == correoNormalizado && u.idUsuario != id);
-        if (otro != null) return (false, "El correo ya está en uso por otro usuario.", null);
+        if (otro != null) return (false, false, "El correo ya está en uso por otro usuario.", null);
 
         usuario.correo = correoNormalizado;
         usuario.nombreUsuario = nombreNormalizado;
@@ -135,7 +143,7 @@ public class UserService : IUserService
 
         await _context.SaveChangesAsync();
 
-        return (true, "Usuario actualizado.", new UsuarioDto
+        return (true, false, "Usuario actualizado.", new UsuarioDto
         {
             idUsuario = usuario.idUsuario,
             correo = usuario.correo,
@@ -155,8 +163,8 @@ public class UserService : IUserService
     /// <returns>Resultado de la operación y mensaje.</returns>
     public async Task<(bool Exito, string Mensaje)> RestablecerContrasenaAsync(int id, string nuevaContrasena)
     {
-        if (string.IsNullOrWhiteSpace(nuevaContrasena) || nuevaContrasena.Length < 8)
-            return (false, "La contraseña debe tener al menos 8 caracteres.");
+        if (!PasswordPolicy.IsValid(nuevaContrasena))
+            return (false, PasswordPolicy.ErrorMessage);
 
         var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.idUsuario == id);
         if (usuario == null) return (false, "Usuario no encontrado.");

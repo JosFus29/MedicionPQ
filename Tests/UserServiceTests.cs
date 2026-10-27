@@ -24,7 +24,7 @@ public class UserServiceTests
         var pwdService = new PasswordService();
         var userService = new UserService(db, pwdService);
 
-        var (exito, mensaje, usuario) = await userService.CreateUserAsync("nuevo@example.com", "Password123", "Nuevo", Usuario.TipoRol.Usuario);
+        var (exito, mensaje, usuario) = await userService.CreateUserAsync("nuevo@example.com", "Password123!", "Nuevo", Usuario.TipoRol.Usuario);
 
         Assert.True(exito);
         Assert.NotNull(usuario);
@@ -32,6 +32,6 @@ public class UserServiceTests
 
         var fromDb = await db.Usuarios.FirstOrDefaultAsync(u => u.correo == "nuevo@example.com");
         Assert.NotNull(fromDb);
-        Assert.NotEqual("Password123", fromDb!.contrasena); // debe estar hasheada
+        Assert.NotEqual("Password123!", fromDb!.contrasena); // debe estar hasheada
     }
 }

@@ -3,8 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace MedicionPQ.Modelos;
 
 /// <summary>
-/// DTO para la creación de usuarios a través del endpoint POST /api/Users.
-/// Solo administradores pueden invocar este endpoint.
+/// DTO interno para alta de cuentas; no corresponde a un endpoint HTTP público.
 /// </summary>
 public class CreateUserRequest
 {
@@ -16,9 +15,9 @@ public class CreateUserRequest
 
     /// <summary>
     /// Contraseña en texto plano que será hasheada antes de persistir.
-    /// Debe cumplir la política mínima (ej. >= 8 caracteres).
+    /// Debe cumplir la política de contraseña nueva del backend.
     /// </summary>
-    [Required, MinLength(8)]
+    [Required, StringLength(16, MinimumLength = 8), RegularExpression(PasswordPolicy.Pattern, ErrorMessage = PasswordPolicy.ErrorMessage)]
     public string Contrasena { get; set; } = string.Empty;
 
     /// <summary>

@@ -16,23 +16,14 @@ public interface IUserService
     /// <summary>Registra públicamente una cuenta y asigna siempre el rol Usuario.</summary>
     Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> RegisterAsync(string correo, string contrasena, string nombreUsuario);
 
-    /// <summary>Valida y registra una cuenta nueva.</summary>
-    /// <param name="correo">Correo único para iniciar sesión.</param>
-    /// <param name="contrasena">Contraseña en texto plano, que se convertirá en hash.</param>
-    /// <param name="nombreUsuario">Nombre visible de la cuenta.</param>
-    /// <param name="rol">Rol que se asignará al nuevo usuario.</param>
-    /// <returns>Resultado de la operación, mensaje y DTO creado si tuvo éxito.</returns>
-    Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> CreateUserAsync(string correo, string contrasena, string nombreUsuario, Usuario.TipoRol rol);
-
     /// <summary>Actualiza los datos editables de una cuenta existente.</summary>
     /// <param name="id">Identificador de la cuenta.</param>
     /// <param name="request">Campos que se guardarán; no permite cambiar la contraseña.</param>
+    /// <param name="rolSolicitante">Rol obtenido del JWT para aplicar las restricciones sobre cuentas SuperAdministrador.</param>
     /// <returns>Resultado de la operación, mensaje y DTO actualizado si tuvo éxito.</returns>
-    Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> UpdateUserAsync(int id, UpdateUserRequest request);
+    Task<(bool Exito, bool Prohibido, string Mensaje, UsuarioDto? Usuario)> UpdateUserAsync(
+        int id,
+        UpdateUserRequest request,
+        Usuario.TipoRol rolSolicitante);
 
-    /// <summary>Asigna una contraseña nueva a una cuenta existente (uso exclusivo de administradores).</summary>
-    /// <param name="id">Identificador de la cuenta.</param>
-    /// <param name="nuevaContrasena">Contraseña nueva en texto plano, que se convertirá en hash.</param>
-    /// <returns>Resultado de la operación y mensaje.</returns>
-    Task<(bool Exito, string Mensaje)> RestablecerContrasenaAsync(int id, string nuevaContrasena);
 }

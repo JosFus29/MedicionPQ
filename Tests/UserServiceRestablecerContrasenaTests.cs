@@ -42,11 +42,11 @@ public class UserServiceRestablecerContrasenaTests
         var user = await CrearUsuarioAsync(db, pwdService);
         var service = new UserService(db, pwdService);
 
-        var (exito, _) = await service.RestablecerContrasenaAsync(user.idUsuario, "Nueva12345");
+        var (exito, _) = await service.RestablecerContrasenaAsync(user.idUsuario, "Nueva12345!");
 
         Assert.True(exito);
         var fromDb = await db.Usuarios.FindAsync(user.idUsuario);
-        Assert.True(pwdService.VerifyPassword(fromDb!.contrasena, "Nueva12345"));
+        Assert.True(pwdService.VerifyPassword(fromDb!.contrasena, "Nueva12345!"));
         Assert.False(pwdService.VerifyPassword(fromDb.contrasena, "Anterior123"));
     }
 
@@ -72,7 +72,7 @@ public class UserServiceRestablecerContrasenaTests
         var db = CreateInMemoryDb("RestablecerDb3");
         var service = new UserService(db, new PasswordService());
 
-        var (exito, mensaje) = await service.RestablecerContrasenaAsync(999, "Nueva12345");
+        var (exito, mensaje) = await service.RestablecerContrasenaAsync(999, "Nueva12345!");
 
         Assert.False(exito);
         Assert.Equal("Usuario no encontrado.", mensaje);

@@ -3,11 +3,11 @@ using System.ComponentModel.DataAnnotations;
 namespace MedicionPQ.Modelos;
 
 /// <summary>
-/// DTO que usa un administrador para asignar una contraseña nueva a un usuario que olvidó la suya.
+/// DTO de validación interna para contraseñas nuevas. No hay endpoint HTTP administrativo de restablecimiento.
 /// </summary>
 public class RestablecerContrasenaRequest
 {
-    /// <summary>Contraseña nueva en texto plano (mínimo 8 caracteres). Se guarda como hash.</summary>
-    [Required, MinLength(8)]
+    /// <summary>Contraseña nueva; se guarda como hash si la operación interna se utiliza.</summary>
+    [Required, StringLength(16, MinimumLength = 8), RegularExpression(PasswordPolicy.Pattern, ErrorMessage = PasswordPolicy.ErrorMessage)]
     public string NuevaContrasena { get; set; } = string.Empty;
 }

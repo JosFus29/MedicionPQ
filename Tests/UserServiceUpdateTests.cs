@@ -47,7 +47,7 @@ public class UserServiceUpdateTests
             TiempoSesion = 30
         };
 
-        var (exito, mensaje, dto) = await service.UpdateUserAsync(user.idUsuario, request);
+        var (exito, _, mensaje, dto) = await service.UpdateUserAsync(user.idUsuario, request, Usuario.TipoRol.Administrador);
 
         Assert.True(exito);
         Assert.NotNull(dto);
@@ -101,7 +101,7 @@ public class UserServiceUpdateTests
             TiempoSesion = 60
         };
 
-        var (exito, mensaje, dto) = await service.UpdateUserAsync(u1.idUsuario, request);
+        var (exito, _, mensaje, dto) = await service.UpdateUserAsync(u1.idUsuario, request, Usuario.TipoRol.Administrador);
 
         Assert.False(exito);
         Assert.Null(dto);

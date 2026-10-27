@@ -26,18 +26,6 @@ public static class BootstrapAdminSeeder
         if (configuredPassword is null && configuredEmail is null)
             return;
 
-        if (string.IsNullOrWhiteSpace(configuredPassword))
-            throw new InvalidOperationException("BootstrapAdmin:Password debe configurarse para crear el administrador inicial.");
-
-        var email = string.IsNullOrWhiteSpace(configuredEmail)
-            ? "admin@gmail.com"
-            : configuredEmail.Trim().ToLowerInvariant();
-
-        if (!new EmailAddressAttribute().IsValid(email))
-            throw new InvalidOperationException("BootstrapAdmin:Email no contiene un correo válido.");
-        if (configuredPassword.Length < 8)
-            throw new InvalidOperationException("BootstrapAdmin:Password debe tener al menos 8 caracteres.");
-
         var db = services.GetRequiredService<AppDbContext>();
         var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("BootstrapAdminSeeder");
 
@@ -50,6 +38,18 @@ public static class BootstrapAdminSeeder
             logger.LogInformation("Ya existe un SuperAdministrador; se omite la creación de la cuenta inicial.");
             return;
         }
+
+        if (string.IsNullOrWhiteSpace(configuredPassword))
+            throw new InvalidOperationException("BootstrapAdmin:Password debe configurarse para crear el administrador inicial.");
+
+        var email = string.IsNullOrWhiteSpace(configuredEmail)
+            ? "admin@gmail.com"
+            : configuredEmail.Trim().ToLowerInvariant();
+
+        if (!new EmailAddressAttribute().IsValid(email))
+            throw new InvalidOperationException("BootstrapAdmin:Email no contiene un correo válido.");
+        if (!PasswordPolicy.IsValid(configuredPassword))
+            throw new InvalidOperationException($"BootstrapAdmin:Password no cumple la política. {PasswordPolicy.ErrorMessage}");
 
         if (await db.Usuarios.AnyAsync(user => user.correo == email))
             throw new InvalidOperationException("El correo configurado para el administrador inicial ya pertenece a otra cuenta.");

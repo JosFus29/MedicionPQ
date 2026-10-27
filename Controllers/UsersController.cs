@@ -23,8 +23,8 @@ public class UsersController : ControllerBase
 
     /// <summary>
     /// GET /api/Users/admins
-    /// Devuelve la lista de usuarios que tienen rol Administrador.
-    /// Requiere autenticación y que el token contenga el rol 'Administrador'.
+    /// Devuelve la lista de cuentas con rol Administrador o SuperAdministrador.
+    /// Requiere autenticación con cualquiera de esos roles.
     /// </summary>
     [HttpGet("admins")]
     [Authorize(Roles = "SuperAdministrador,Administrador")]
@@ -47,22 +47,6 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// POST /api/Users
-    /// Crea un nuevo usuario. Solo administradores pueden acceder.
-    /// </summary>
-    /// <param name="request">Datos necesarios para crear el usuario (correo, contrasena, nombre y rol).</param>
-    /// <returns>201 Created con el UsuarioDto del usuario creado o 400 BadRequest con mensaje en caso de error.</returns>
-    [HttpPost]
-    [Authorize(Roles = "SuperAdministrador,Administrador")]
-    public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
-    {
-        var (exito, mensaje, usuario) = await _userService.CreateUserAsync(request.Correo, request.Contrasena, request.NombreUsuario, request.Rol);
-        if (!exito) return BadRequest(new { mensaje });
-
-        return CreatedAtAction(nameof(GetAll), new { }, usuario);
-    }
-
-    /// <summary>
     /// PUT /api/Users/{id}
     /// Actualiza los datos de un usuario existente (no actualiza la contraseña). Solo administradores.
     /// </summary>
@@ -70,7 +54,12 @@ public class UsersController : ControllerBase
     [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest request)
     {
-        var (exito, mensaje, usuario) = await _userService.UpdateUserAsync(id, request);
+        var rolSolicitante = User.IsInRole(nameof(Usuario.TipoRol.SuperAdministrador))
+            ? Usuario.TipoRol.SuperAdministrador
+            : Usuario.TipoRol.Administrador;
+
+        var (exito, prohibido, mensaje, usuario) = await _userService.UpdateUserAsync(id, request, rolSolicitante);
+        if (prohibido) return Forbid();
         if (!exito) return BadRequest(new { mensaje });
 
         return Ok(usuario);

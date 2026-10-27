@@ -10,7 +10,7 @@ public class RegistroRequest
     public string Correo { get; set; } = string.Empty;
 
     /// <summary>Contraseña inicial; se guardará únicamente como hash.</summary>
-    [Required, MinLength(8)]
+    [Required, StringLength(16, MinimumLength = 8), RegularExpression(PasswordPolicy.Pattern, ErrorMessage = PasswordPolicy.ErrorMessage)]
     public string Contrasena { get; set; } = string.Empty;
 
     /// <summary>Nombre que se mostrará para la cuenta.</summary>

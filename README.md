@@ -41,6 +41,8 @@ dotnet run
 
 En Development, Swagger UI está en `/swagger` y OpenAPI en `/openapi/v1.json`. La API usa redirección HTTPS. La base de datos debe existir y tener la tabla `Usuario` antes de llamar a los endpoints; el proyecto no aplica migraciones automáticamente al arrancar.
 
+Para permitir el rol 5 en `dbo.Usuario`, ejecuta `Database/Scripts/20261027_ActualizarRolesUsuario.sql` en la base de datos de destino. Este repositorio no aplica migraciones SQL automáticamente al arrancar.
+
 ## Endpoints
 
 Los roles son `SuperAdministrador` (`5`), `Administrador` (`1`) y `Usuario` (`2`). Las rutas marcadas para Administrador aceptan tanto Administrador como SuperAdministrador. El SuperAdministrador conserva todos los permisos administrativos, incluido editar PuntosIO; Administrador no puede editar PuntosIO. Usuario conserva permisos de consulta.
@@ -54,7 +56,6 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | `POST /api/Auth/renew` | Usuario autenticado | Renueva el JWT cuando quedan 60 segundos o menos. |
 | `GET /api/Users` | Administrador | Lista usuarios sin exponer hashes de contraseña. |
 | `GET /api/Users/admins` | Administrador | Lista usuarios con rol Administrador o SuperAdministrador. |
-| `POST /api/Users` | Administrador | Crea un usuario con contraseña hasheada. Devuelve `201` y el DTO creado. |
 | `PUT /api/Users/{id}` | Administrador | Actualiza correo, nombre, rol, estado y duración de sesión; no cambia contraseña. |
 | `GET /api/ControladorRF` | Usuario autenticado | Lista los controladores RF. |
 | `GET /api/ControladorRF/{id}` | Usuario autenticado | Consulta el detalle de un controlador RF. |
@@ -301,11 +302,10 @@ El token incluye identificador, correo, nombre y rol. Expira según `tiempoSesio
 
 ### Crear y actualizar usuarios
 
-`POST /api/Users` recibe `correo`, `contrasena`, `nombreUsuario` y `rol` (opcional; por defecto `Usuario`). El enum se envía como número: `5` para SuperAdministrador, `1` para Administrador y `2` para Usuario. La contraseña requiere al menos 8 caracteres.
 
-`PUT /api/Users/{id}` recibe `correo`, `nombreUsuario`, `rol` (5 SuperAdministrador, 1 Administrador, 2 Usuario), `edo` (`true` activo) y `tiempoSesion` (1 a 1440 minutos). Todos los campos se envían como un objeto JSON. La contraseña no se modifica desde esta ruta.
+`PUT /api/Users/{id}` recibe `correo`, `nombreUsuario`, `rol` (5 SuperAdministrador, 1 Administrador, 2 Usuario), `edo` (`true` activo) y `tiempoSesion` (1 a 1440 minutos). Administrador recibe `403` si intenta asignar rol 5 o editar cualquier cuenta que ya tenga rol SuperAdministrador; solo SuperAdministrador puede editar esas cuentas. El frontend debería ocultar el botón Editar en las filas de SuperAdministrador, aunque la API aplica la restricción por sí misma.
 
-Cualquier persona puede registrarse mediante `POST /api/Auth/register`, enviando `correo`, `contrasena` (mínimo 8 caracteres) y `nombreUsuario`. El endpoint asigna siempre el rol `Usuario`, aunque el cliente incluya un campo `rol`; los correos duplicados devuelven `409` y los datos inválidos `400`. La contraseña se guarda con hash. No existe un endpoint administrativo para cambiar la contraseña de una cuenta existente. El alta administrativa mediante `POST /api/Users` sigue disponible para crear cuentas con los roles que gestione el personal autorizado.
+Cualquier persona puede registrarse mediante `POST /api/Auth/register`, enviando `correo`, `contrasena` y `nombreUsuario`. La contraseña nueva debe tener de 8 a 16 caracteres, una mayúscula, una minúscula, un número y un carácter especial, sin espacios; letras acentuadas cuentan como letras. La API asigna siempre el rol `Usuario`; los correos duplicados devuelven `409` y los datos inválidos `400`. El login no aplica estas reglas a contraseñas ya guardadas. No existe un endpoint HTTP para cambiar o restablecer contraseñas existentes; ese endpoint se retiró deliberadamente.
 
 Los usuarios se devuelven como DTO con `idUsuario`, `correo`, `nombreUsuario`, `rol`, `edo` y `tiempoSesion`; el hash nunca se devuelve.
 
@@ -367,4 +367,4 @@ dotnet user-secrets set "BootstrapAdmin:Email" "admin@gmail.com" --project .\Med
 dotnet user-secrets set "BootstrapAdmin:Password" "<contraseña inicial>" --project .\MedicionPQ.csproj
 ```
 
-Al iniciar, la API crea la cuenta si todavía no existe ningún SuperAdministrador. Guarda la contraseña con `PasswordService`, por lo que el login puede verificarla con el mismo algoritmo. Si ya hay un SuperAdministrador, no modifica ni duplica cuentas. Retira `BootstrapAdmin:Password` de la configuración después de crear la cuenta; la API no necesita ese secreto para los siguientes arranques. Esta inicialización inserta datos en una tabla ya creada, no reemplaza la creación del esquema de la base.
+La contraseña configurada para el bootstrap también debe cumplir la política de 8 a 16 caracteres, mayúscula, minúscula, número, carácter especial y sin espacios. Al iniciar, la API crea la cuenta si todavía no existe ningún SuperAdministrador. Guarda la contraseña con `PasswordService`, por lo que el login puede verificarla con el mismo algoritmo. Si ya hay un SuperAdministrador, no modifica ni duplica cuentas. Retira `BootstrapAdmin:Password` de la configuración después de crear la cuenta; la API no necesita ese secreto para los siguientes arranques. Esta inicialización inserta datos en una tabla ya creada, no reemplaza la creación del esquema de la base.

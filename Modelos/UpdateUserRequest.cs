@@ -15,7 +15,7 @@ public class UpdateUserRequest
     [Required]
     public string NombreUsuario { get; set; } = string.Empty;
 
-    /// <summary>Rol: 1 para Administrador o 2 para Usuario.</summary>
+    /// <summary>Rol: 5 para SuperAdministrador, 1 para Administrador o 2 para Usuario.</summary>
     [EnumDataType(typeof(Usuario.TipoRol))]
     public Usuario.TipoRol Rol { get; set; } = Usuario.TipoRol.Usuario;
 
