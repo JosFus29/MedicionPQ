@@ -155,23 +155,33 @@ public class UserService : IUserService
     }
 
     /// <summary>
-    /// Reemplaza el hash de contraseña de una cuenta por el de una contraseña nueva.
-    /// La contraseña anterior no se puede consultar porque solo se guarda su hash.
+    /// Permite que el propio usuario que olvidó su contraseña cree una nueva escribiendo su correo.
+    /// No pide ninguna otra comprobación de identidad, por decisión del proyecto: cualquiera que conozca
+    /// el correo de una cuenta activa puede cambiar su contraseña. Cada uso queda en el log de auditoría.
+    /// No existe una versión para que un administrador cambie la contraseña de otra cuenta.
     /// </summary>
-    /// <param name="id">Identificador de la cuenta.</param>
-    /// <param name="nuevaContrasena">Contraseña nueva de al menos ocho caracteres.</param>
+    /// <param name="correo">Correo con el que el usuario inicia sesión.</param>
+    /// <param name="nuevaContrasena">Contraseña nueva; debe cumplir <see cref="PasswordPolicy"/>.</param>
     /// <returns>Resultado de la operación y mensaje.</returns>
-    public async Task<(bool Exito, string Mensaje)> RestablecerContrasenaAsync(int id, string nuevaContrasena)
+    public async Task<(bool Exito, string Mensaje)> RestablecerContrasenaAsync(string correo, string nuevaContrasena)
     {
         if (!PasswordPolicy.IsValid(nuevaContrasena))
             return (false, PasswordPolicy.ErrorMessage);
 
-        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.idUsuario == id);
-        if (usuario == null) return (false, "Usuario no encontrado.");
+        var correoNormalizado = correo?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(correoNormalizado))
+            return (false, "El correo es obligatorio.");
+
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.correo == correoNormalizado);
+        if (usuario == null || !usuario.edo)
+            return (false, "No existe una cuenta activa con ese correo.");
+
+        if (_passwordService.VerifyPassword(usuario.contrasena, nuevaContrasena))
+            return (false, "La contraseña nueva debe ser distinta de la actual.");
 
         usuario.contrasena = _passwordService.HashPassword(nuevaContrasena);
         await _context.SaveChangesAsync();
 
-        return (true, "Contraseña restablecida.");
+        return (true, "Contraseña actualizada. Ya puedes iniciar sesión con la nueva.");
     }
 }

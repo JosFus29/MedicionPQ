@@ -58,6 +58,10 @@ public class AppDbContext : DbContext
 
     /// <summary>Vista de promedios mensuales agrupados por año.</summary>
     public DbSet<Medicion5MPromedioAnioView> VistaMedicion5MPromedioAnio { get; set; }
+
+    /// <summary>Vista con el total de energía por hora y el acumulado del día (variables P5M de energía).</summary>
+    public DbSet<Medicion5MEnergiaHoraView> VistaMedicion5MEnergiaHora { get; set; }
+
     /// <summary>
     /// Tabla de variables eléctricas configuradas (Vars5M).
     /// Define qué variables se miden, su unidad, código IHM, estado y número de fases.
@@ -80,6 +84,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Medicion5MPromedioSemanaView>().ToView("vw_Medicion5M_PromedioSemana").HasNoKey();
         modelBuilder.Entity<Medicion5MPromedioMesView>().ToView("vw_Medicion5M_PromedioMes").HasNoKey();
         modelBuilder.Entity<Medicion5MPromedioAnioView>().ToView("vw_Medicion5M_PromedioAnio").HasNoKey();
+        modelBuilder.Entity<Medicion5MEnergiaHoraView>().ToView("vw_Medicion5M_EnergiaHora").HasNoKey();
 
         modelBuilder.Entity<MedidorQP>()
             .HasOne<ControladorRF>()

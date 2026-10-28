@@ -148,9 +148,17 @@ public class AuditoriaInterceptor : SaveChangesInterceptor
         _altasPendientes.Clear();
     }
 
-    /// <summary>Correo del usuario del token JWT; "sistema" si el cambio no viene de una solicitud HTTP.</summary>
+    /// <summary>
+    /// Correo del usuario del token JWT; "anonimo" si la solicitud no trae token
+    /// (por ejemplo, el restablecimiento de contraseña) y "sistema" si el cambio no viene de una solicitud HTTP.
+    /// </summary>
     private string ObtenerUsuario()
-        => _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Email)?.Value ?? "sistema";
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext is null) return "sistema";
+
+        return httpContext.User.FindFirst(ClaimTypes.Email)?.Value ?? "anonimo";
+    }
 
     /// <summary>Nombre de la tabla en SQL Server (o de la clase, si no tiene tabla asignada).</summary>
     private static string NombreTabla(EntityEntry entrada)

@@ -51,4 +51,16 @@ public class Medicion5MService : IMedicion5MService
                 (m.anio < fin.Year || (m.anio == fin.Year && m.mes <= fin.Month)))
             .OrderBy(m => m.anio).ThenBy(m => m.mes).ToListAsync();
 
+    /// <summary>Fase en la que se consultan las variables de energía (1 = A).</summary>
+    public const short FaseEnergia = 1;
+
+    /// <summary>
+    /// Lee el total de energía por hora y el acumulado del día, siempre en fase A.
+    /// Si no se indica variable, trae todas las de energía (P5M_EE, P5M_ER, P5M_ERI a P5M_ERIV).
+    /// </summary>
+    public Task<List<Medicion5MEnergiaHoraView>> GetEnergiaHoraAsync(int idMedidor, int? idVar5M, DateOnly inicio, DateOnly fin) =>
+        _context.VistaMedicion5MEnergiaHora.AsNoTracking()
+            .Where(m => m.idMedidor == idMedidor && m.fase == FaseEnergia && m.fecha >= inicio && m.fecha <= fin &&
+                (idVar5M == null || m.idVar5M == idVar5M))
+            .OrderBy(m => m.idVar5M).ThenBy(m => m.fecha).ThenBy(m => m.hora).ToListAsync();
 }

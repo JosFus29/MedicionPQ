@@ -26,4 +26,12 @@ public interface IUserService
         UpdateUserRequest request,
         Usuario.TipoRol rolSolicitante);
 
+    /// <summary>
+    /// Permite que el propio usuario que olvidó su contraseña cree una nueva con solo su correo.
+    /// No hay una operación para que un administrador cambie la contraseña de otra cuenta.
+    /// </summary>
+    /// <param name="correo">Correo con el que el usuario inicia sesión.</param>
+    /// <param name="nuevaContrasena">Contraseña nueva en texto plano, que se convertirá en hash.</param>
+    /// <returns>Resultado de la operación y mensaje.</returns>
+    Task<(bool Exito, string Mensaje)> RestablecerContrasenaAsync(string correo, string nuevaContrasena);
 }

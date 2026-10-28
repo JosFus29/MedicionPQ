@@ -54,6 +54,7 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | `POST /api/Auth/login` | Público | Valida correo y contraseña; devuelve JWT e ID de usuario. |
 | `POST /api/Auth/register` | Público | Registra una cuenta nueva con rol Usuario; no acepta roles desde el cliente. Devuelve `201`. |
 | `POST /api/Auth/renew` | Usuario autenticado | Renueva el JWT cuando quedan 60 segundos o menos. |
+| `POST /api/Contrasena/restablecer` | Público | El propio usuario que olvidó su contraseña crea una nueva con su correo. |
 | `GET /api/Users` | Administrador | Lista usuarios sin exponer hashes de contraseña. |
 | `GET /api/Users/admins` | Administrador | Lista usuarios con rol Administrador o SuperAdministrador. |
 | `PUT /api/Users/{id}` | Administrador | Actualiza correo, nombre, rol, estado y duración de sesión; no cambia contraseña. |
@@ -88,6 +89,7 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | `GET /api/Medicion5M/promedio-semana` | Usuario autenticado | Consulta valores diarios etiquetados por semana. |
 | `GET /api/Medicion5M/promedio-mes` | Usuario autenticado | Consulta valores diarios etiquetados por mes. |
 | `GET /api/Medicion5M/promedio-anio` | Usuario autenticado | Consulta promedios mensuales agrupados por año. |
+| `GET /api/Medicion5M/energia-hora` | Usuario autenticado | Total de energía por hora y acumulado del día, solo variables de energía y fase A. |
 | `GET /api/EventosReg` | Usuario autenticado | Lista los registros de eventos. |
 | `GET /api/EventosReg/{idMedidor}/{idCtrlRF}/{idEvento}/{fecha}` | Usuario autenticado | Consulta un registro por su clave compuesta. |
 | `POST /api/EventosReg` | Administrador | Agrega un registro de evento. |
@@ -226,10 +228,11 @@ Rutas de lectura:
 - `GET /api/Medicion5M/promedio-semana`: filas diarias con `anio` y `semana`.
 - `GET /api/Medicion5M/promedio-mes`: filas diarias con `anio` y `mes`.
 - `GET /api/Medicion5M/promedio-anio`: promedio por mes con `anio` y `mes`; devuelve los meses que intersectan el rango solicitado.
+- `GET /api/Medicion5M/energia-hora`: total de energía por hora para las variables P5M de energía (`P5M_EE`, `P5M_ER`, `P5M_ERI` a `P5M_ERIV`), solo en fase A. Cada fila trae `hora`, `totalHora` (suma de los 12 intervalos de 5 minutos), `intervalos` (registros que tuvo la hora) y `acumuladoDia` (suma desde las 00:00). Recibe `idMedidor`, `fechaInicio`, `fechaFin` e `idVar5M` opcional (si se omite, devuelve todas las de energía); no recibe `fase`. Usa la vista `vw_Medicion5M_EnergiaHora`, que se crea con `Database/Scripts/20261028_VistaEnergiaHora.sql`.
 
 Todas reciben los parámetros de consulta `idMedidor`, `idVar5M`, `fechaInicio` y `fechaFin` en formato `yyyy-MM-dd`, además de `fase`. Ejemplo: `GET /api/Medicion5M/crudo?idMedidor=4&idVar5M=2&fechaInicio=2026-10-01&fechaFin=2026-10-07&fase=1`. Si hay algunos registros pero faltan días o intervalos, se devuelven las filas existentes; si no hay ningún resultado en toda la consulta, responde `404` con un mensaje controlado. Filtros inválidos responden `400`.
 
-Las seis rutas de `Medicion5M` son exclusivamente de consulta para cualquier usuario autenticado. No existe una ruta para modificar, agregar o eliminar mediciones; las vistas y la tabla base permanecen sin cambios por medio de esta API.
+Las rutas de `Medicion5M` son exclusivamente de consulta para cualquier usuario autenticado. No existe una ruta para modificar, agregar o eliminar mediciones; las vistas y la tabla base permanecen sin cambios por medio de esta API.
 
 ### Registros de eventos
 
@@ -305,7 +308,7 @@ El token incluye identificador, correo, nombre y rol. Expira según `tiempoSesio
 
 `PUT /api/Users/{id}` recibe `correo`, `nombreUsuario`, `rol` (5 SuperAdministrador, 1 Administrador, 2 Usuario), `edo` (`true` activo) y `tiempoSesion` (1 a 1440 minutos). Administrador recibe `403` si intenta asignar rol 5 o editar cualquier cuenta que ya tenga rol SuperAdministrador; solo SuperAdministrador puede editar esas cuentas. El frontend debería ocultar el botón Editar en las filas de SuperAdministrador, aunque la API aplica la restricción por sí misma.
 
-Cualquier persona puede registrarse mediante `POST /api/Auth/register`, enviando `correo`, `contrasena` y `nombreUsuario`. La contraseña nueva debe tener de 8 a 16 caracteres, una mayúscula, una minúscula, un número y un carácter especial, sin espacios; letras acentuadas cuentan como letras. La API asigna siempre el rol `Usuario`; los correos duplicados devuelven `409` y los datos inválidos `400`. El login no aplica estas reglas a contraseñas ya guardadas. No existe un endpoint HTTP para cambiar o restablecer contraseñas existentes; ese endpoint se retiró deliberadamente.
+Cualquier persona puede registrarse mediante `POST /api/Auth/register`, enviando `correo`, `contrasena` y `nombreUsuario`. La contraseña nueva debe tener de 8 a 16 caracteres, una mayúscula, una minúscula, un número y un carácter especial, sin espacios; letras acentuadas cuentan como letras. La API asigna siempre el rol `Usuario`; los correos duplicados devuelven `409` y los datos inválidos `400`. El login no aplica estas reglas a contraseñas ya guardadas. Ningún Administrador ni SuperAdministrador puede cambiar la contraseña de otra cuenta. El propio usuario que olvidó su contraseña la restablece con `POST /api/Contrasena/restablecer`, enviando `correo` y `nuevaContrasena` (misma política que el registro); no requiere sesión ni correo de verificación. Riesgo aceptado: quien conozca el correo de una cuenta activa puede cambiar su contraseña; cada cambio queda en el log de auditoría.
 
 Los usuarios se devuelven como DTO con `idUsuario`, `correo`, `nombreUsuario`, `rol`, `edo` y `tiempoSesion`; el hash nunca se devuelve.
 

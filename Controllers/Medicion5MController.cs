@@ -70,6 +70,25 @@ public class Medicion5MController : ControllerBase
         return Results(await _service.GetPromedioAnioAsync(idMedidor, idVar5M, fechaInicio, fechaFin, fase));
     }
 
+    /// <summary>
+    /// GET /api/Medicion5M/energia-hora
+    /// Total de energía por hora (suma de los intervalos de 5 minutos) y acumulado del día,
+    /// solo para las variables P5M de energía y solo en fase A.
+    /// </summary>
+    /// <param name="idMedidor">Medidor a consultar.</param>
+    /// <param name="idVar5M">Variable de energía; si se omite, devuelve todas las de energía.</param>
+    /// <param name="fechaInicio">Primer día del rango (AAAA-MM-DD).</param>
+    /// <param name="fechaFin">Último día del rango (AAAA-MM-DD).</param>
+    [HttpGet("energia-hora")]
+    public async Task<IActionResult> GetEnergiaHora(int idMedidor, int? idVar5M, DateOnly fechaInicio, DateOnly fechaFin)
+    {
+        // La fase no se recibe: la energía solo se consulta en fase A (1).
+        // Si no se filtra por variable se pasa 1 solo para que la validación común acepte el idVar5M.
+        var error = ValidateQuery(idMedidor, idVar5M ?? 1, fechaInicio, fechaFin, Medicion5MService.FaseEnergia);
+        if (error is not null) return error;
+        return Results(await _service.GetEnergiaHoraAsync(idMedidor, idVar5M, fechaInicio, fechaFin));
+    }
+
     /// <summary>Edita una lectura individual; solo administrador con contraseña actual válida.</summary>
     /// <summary>Valida filtros comunes para fases y rangos de fecha antes de consultar una vista.</summary>
     private IActionResult? ValidateQuery(int idMedidor, int idVar5M, DateOnly inicio, DateOnly fin, short fase)

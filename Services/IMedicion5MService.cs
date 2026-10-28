@@ -17,4 +17,9 @@ public interface IMedicion5MService
     Task<List<Medicion5MPromedioMesView>> GetPromedioMesAsync(int idMedidor, int idVar5M, DateOnly inicio, DateOnly fin, short fase);
     /// <summary>Consulta promedios mensuales de los meses que intersectan el rango.</summary>
     Task<List<Medicion5MPromedioAnioView>> GetPromedioAnioAsync(int idMedidor, int idVar5M, DateOnly inicio, DateOnly fin, short fase);
+    /// <summary>
+    /// Consulta el total de energía por hora y el acumulado del día, solo en fase A.
+    /// Si <paramref name="idVar5M"/> es null, devuelve todas las variables de energía.
+    /// </summary>
+    Task<List<Medicion5MEnergiaHoraView>> GetEnergiaHoraAsync(int idMedidor, int? idVar5M, DateOnly inicio, DateOnly fin);
 }
