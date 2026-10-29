@@ -1,3 +1,5 @@
+namespace MedicionPQ.Modelos.Medidores;
+
 public class MedidorPQConfig
 {
     public int IdMedidor { get; set; }
@@ -7,5 +9,5 @@ public class MedidorPQConfig
     public string DirIP { get; set; }
     public int Puerto { get; set; }
     public string Descripcion { get; set; }
-    public EstadoOperativo Edo { get; set; }
+    public int Edo { get; set; }
 }

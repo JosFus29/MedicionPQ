@@ -1,3 +1,5 @@
+namespace MedicionPQ.Modelos.Medidores;
+
 public class EventoReg
 {
     public int IdMedidor { get; set; }

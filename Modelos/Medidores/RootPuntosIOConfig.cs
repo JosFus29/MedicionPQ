@@ -1,3 +1,5 @@
+namespace MedicionPQ.Modelos.Medidores;
+
 using System.Collections.Generic;
 
 public class RootPuntosIOConfig

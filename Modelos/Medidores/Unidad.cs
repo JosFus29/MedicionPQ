@@ -1,3 +1,5 @@
+namespace MedicionPQ.Modelos.Medidores;
+
 public class Unidad
 {
     public int IdUnidad { get; set; }

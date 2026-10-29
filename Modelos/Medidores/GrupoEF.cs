@@ -1,3 +1,5 @@
+namespace MedicionPQ.Modelos.Medidores;
+
 public class GEF
 {
     public int Id { get; set; }

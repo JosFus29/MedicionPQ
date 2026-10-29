@@ -2,6 +2,7 @@ using MedicionPQ.Data;
 using MedicionPQ.Middleware;
 using MedicionPQ.Modelos.Medidores;
 using MedicionPQ.Services;
+using MedicionPQ.Services.Medidores;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,6 @@ using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Events;
 using System.Text;
-using MedicionPQ.Modelos.Medidores;
 
 // Punto de entrada: configura los servicios y el flujo HTTP de la API.
 var builder = WebApplication.CreateBuilder(args);

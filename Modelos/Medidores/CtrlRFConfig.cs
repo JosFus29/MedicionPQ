@@ -1,3 +1,5 @@
+namespace MedicionPQ.Modelos.Medidores;
+
 public class CtrlRFConfig
 {
     public int IdCtrlRF { get; set; }
@@ -5,6 +7,6 @@ public class CtrlRFConfig
     public string DirIP { get; set; } = string.Empty;
     public int Puerto { get; set; }
     public string Descripcion { get; set; } = string.Empty;
-    public EstadoOperativo Edo { get; set; }
+    public int Edo { get; set; }
 
 }

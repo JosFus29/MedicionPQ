@@ -1,3 +1,5 @@
+namespace MedicionPQ.Modelos.Medidores;
+
 public class PuntoIOConfig
 {
     public int IdPunto { get; set; }

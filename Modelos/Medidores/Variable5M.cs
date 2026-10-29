@@ -1,3 +1,5 @@
+namespace MedicionPQ.Modelos.Medidores;
+
 public class Variable5M
 {
     public int IdV5M { get; set; }

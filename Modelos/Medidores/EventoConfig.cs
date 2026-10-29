@@ -1,4 +1,6 @@
-﻿public class EventoConfig
+﻿namespace MedicionPQ.Modelos.Medidores;
+
+public class EventoConfig
 {
     public int IdEvento { get; set; }
     public int NumEvento { get; set; }
