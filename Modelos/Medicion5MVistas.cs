@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
 namespace MedicionPQ.Modelos;
@@ -20,7 +21,6 @@ public class Medicion5MView
     public double? valor { get; set; }
 }
 
-/// <summary>Promedio horario por medidor, variable, fecha y fase.</summary>
 /// <summary>
 /// Fila de la vista vw_Medicion5M_EnergiaHora: total de energía de una hora y acumulado del día,
 /// solo para las variables P5M de energía (P5M_EE, P5M_ER, P5M_ERI a P5M_ERIV).
@@ -46,6 +46,20 @@ public class Medicion5MEnergiaHoraView
     /// <summary>Hora del día, de 0 a 23.</summary>
     public int hora { get; set; }
 
+    /// <summary>
+    /// Rango de la hora en texto, listo para mostrar: por ejemplo "13:00 - 14:00".
+    /// Se calcula en la API a partir de <see cref="hora"/>; no es una columna de la vista.
+    /// </summary>
+    [NotMapped]
+    public string horaTexto => $"{hora:00}:00 - {(hora + 1) % 24:00}:00";
+
+    /// <summary>
+    /// Fecha y hora de inicio del periodo, por ejemplo 2026-10-27T13:00:00. Útil para graficar en el frontend.
+    /// Se calcula en la API a partir de <see cref="fecha"/> y <see cref="hora"/>; no es una columna de la vista.
+    /// </summary>
+    [NotMapped]
+    public DateTime fechaHora => fecha.ToDateTime(new TimeOnly(hora, 0));
+
     /// <summary>Suma de los valores de 5 minutos de esa hora (kWh o kVARh según la variable).</summary>
     public double totalHora { get; set; }
 
@@ -56,6 +70,7 @@ public class Medicion5MEnergiaHoraView
     public double acumuladoDia { get; set; }
 }
 
+/// <summary>Promedio horario por medidor, variable, fecha y fase.</summary>
 [Keyless]
 public class Medicion5MPromedioHoraView
 {
