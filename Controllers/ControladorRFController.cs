@@ -33,8 +33,8 @@ public class ControladorRFController : ControllerBase
     [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> Create([FromBody] ControladorRFRequest request)
     {
-        if (request.Edo is not (10 or 11 or 20))
-            return BadRequest(new { mensaje = "Estado inválido. Valores permitidos: 10 (activo), 11 (en uso) y 20 (inactivo)." });
+        if (!EstadoEquipo.EsValido(request.Edo))
+            return BadRequest(new { mensaje = EstadoEquipo.MensajeError });
 
         var controlador = await _service.CreateAsync(request);
         return CreatedAtAction(nameof(GetById), new { id = controlador.idCtrlRF }, controlador);
@@ -45,8 +45,8 @@ public class ControladorRFController : ControllerBase
     [Authorize(Roles = "SuperAdministrador,Administrador")]
     public async Task<IActionResult> Update(int id, [FromBody] ControladorRFRequest request)
     {
-        if (request.Edo is not (10 or 11 or 20))
-            return BadRequest(new { mensaje = "Estado inválido. Valores permitidos: 10 (activo), 11 (en uso) y 20 (inactivo)." });
+        if (!EstadoEquipo.EsValido(request.Edo))
+            return BadRequest(new { mensaje = EstadoEquipo.MensajeError });
 
         var controlador = await _service.UpdateAsync(id, request);
         return controlador is null ? NotFound(new { mensaje = "Controlador RF no encontrado." }) : Ok(controlador);

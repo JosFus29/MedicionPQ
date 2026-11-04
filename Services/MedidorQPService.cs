@@ -7,7 +7,6 @@ namespace MedicionPQ.Services;
 /// <summary>Aplica las reglas de relación y estado al guardar medidores QP.</summary>
 public class MedidorQPService : IMedidorQPService
 {
-    private static readonly int[] EstadosPermitidos = [10, 11, 20];
     private readonly AppDbContext _context;
 
     /// <summary>Inicializa el servicio con el contexto de datos.</summary>
@@ -43,8 +42,8 @@ public class MedidorQPService : IMedidorQPService
     /// <summary>Comprueba que el controlador destino exista y el estado pertenezca al catálogo acordado.</summary>
     private async Task<string?> ValidateAsync(MedidorQPRequest request)
     {
-        if (!EstadosPermitidos.Contains(request.Edo))
-            return "Estado inválido. Valores permitidos: 10 (activo), 11 (en uso) y 20 (inactivo).";
+        if (!EstadoEquipo.EsValido(request.Edo))
+            return EstadoEquipo.MensajeError;
         if (!await _context.ControladoresRF.AnyAsync(c => c.idCtrlRF == request.IdCtrlRF))
             return "El controlador RF indicado no existe.";
         return null;

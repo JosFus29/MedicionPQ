@@ -110,13 +110,13 @@ Las operaciones de controladores requieren un JWT válido. Cualquier usuario aut
 }
 ```
 
-`PUT /api/ControladorRF/{id}` recibe esos mismos cuatro campos y reemplaza sus valores. `edo` es entero: `10` activo, `11` en uso o `20` inactivo. Para inactivar un controlador, el administrador lo actualiza con `edo: 20`; para activarlo, usa `edo: 10`. Listados y detalles devuelven `idCtrlRF`, `numSerie`, `dirIP`, `nombre` y `edo`; un identificador inexistente produce `404`.
+`PUT /api/ControladorRF/{id}` recibe esos mismos cuatro campos y reemplaza sus valores. `edo` es entero: `0` inactivo, `10` activo, `11` en uso o `20` en mantenimiento. Para inactivar un controlador, el administrador lo actualiza con `edo: 0`; para activarlo, usa `edo: 10`. Listados y detalles devuelven `idCtrlRF`, `numSerie`, `dirIP`, `nombre` y `edo`; un identificador inexistente produce `404`.
 
 ### Medidores QP
 
 Cada registro de `MedidorQP` pertenece a exactamente un controlador, mediante `idCtrlRF`; un controlador puede tener varios medidores. El `idCtrlRF` enviado al crear o actualizar debe existir. No se permite borrar un controlador que tenga medidores asociados desde la relación configurada en Entity Framework.
 
-`POST /api/MedidoresQP` y `PUT /api/MedidoresQP/{id}` requieren JWT con rol `Administrador`. Ambos reciben `idCtrlRF`, `dirRed` (entero), `dirRF` (máximo 20 caracteres), `descripcion` (máximo 80), `edo` (`10` activo, `11` en uso o `20` inactivo) y `dirIP` (máximo 20). Para inactivar un medidor sin borrar el registro, el administrador lo actualiza con `edo: 20`; para activarlo, usa `edo: 10`. El `idMedidor` se genera en la base de datos. El alta devuelve `201`; una referencia a controlador inexistente o estado inválido devuelve `400`, y un ID de medidor inexistente al actualizar devuelve `404`.
+`POST /api/MedidoresQP` y `PUT /api/MedidoresQP/{id}` requieren JWT con rol `Administrador`. Ambos reciben `idCtrlRF`, `dirRed` (entero), `dirRF` (máximo 20 caracteres), `descripcion` (máximo 80), `edo` (`0` inactivo, `10` activo, `11` en uso o `20` en mantenimiento) y `dirIP` (máximo 20). Para inactivar un medidor sin borrar el registro, el administrador lo actualiza con `edo: 0`; para activarlo, usa `edo: 10`. El `idMedidor` se genera en la base de datos. El alta devuelve `201`; una referencia a controlador inexistente o estado inválido devuelve `400`, y un ID de medidor inexistente al actualizar devuelve `404`.
 
 Ejemplo del cuerpo para alta y actualización:
 

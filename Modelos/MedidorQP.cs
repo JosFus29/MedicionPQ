@@ -25,7 +25,7 @@ public class MedidorQP
     [Required, StringLength(80)]
     public string descripcion { get; set; } = string.Empty;
 
-    /// <summary>Estado entero: 10 activo, 11 en uso o 20 inactivo.</summary>
+    /// <summary>Estado entero: 0 inactivo, 10 activo, 11 en uso o 20 en mantenimiento (ver <see cref="EstadoEquipo"/>).</summary>
     public int edo { get; set; }
 
     /// <summary>Dirección IP (máximo 20 caracteres).</summary>

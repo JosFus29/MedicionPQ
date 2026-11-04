@@ -23,7 +23,7 @@ public class ControladorRF
     [Required, StringLength(50)]
     public string nombre { get; set; } = string.Empty;
 
-    /// <summary>Estado entero: 10 activo, 11 en uso o 20 inactivo.</summary>
+    /// <summary>Estado entero: 0 inactivo, 10 activo, 11 en uso o 20 en mantenimiento (ver <see cref="EstadoEquipo"/>).</summary>
     public int edo { get; set; }
 
     /// <summary>Medidores asociados a este controlador; la relación permite varios medidores.</summary>
