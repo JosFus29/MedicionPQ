@@ -1,6 +1,6 @@
 {
   "SerialParams": {
-    "COM": "COM7",
+    "COM": "COM3", // Puerto COM3 por defecto, cambiar si se requiere otro puerto
     "BaudRate": 38400,
     "Paridad": 0,
     "BitsDatos": 8,
@@ -8,7 +8,7 @@
     "Timeout": 5000
   },
   "EthernetParams": {
-    "Ip": "200.0.113.62",
+    "Ip": "200.0.113.62", // IP por defecto, cambiar si se requiere otra IP
     "Port": 1000,
     "Timeout": 6000
   }
