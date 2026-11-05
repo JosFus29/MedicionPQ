@@ -1,0 +1,34 @@
+﻿using MedicionPQ.Modelos.Medidores;
+using MedicionPQ.Services.Medidores;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace MedicionPQ.Controllers;
+
+/// <summary>Expone la operación de conexión con un medidor.</summary>
+[ApiController]
+[Route("api/[controller]")]
+[Authorize(Roles = "SuperAdministrador,Administrador")]
+public class ConexionMedidorController : ControllerBase
+{
+    private readonly IConexionMedidorService _servicio;
+
+    /// <summary>Inicializa el controlador con el servicio de conexión.</summary>
+    public ConexionMedidorController(IConexionMedidorService servicio)
+    {
+        _servicio = servicio;
+    }
+
+    /// <summary>Intenta conectar con el medidor indicado.</summary>
+    [HttpPost("conectar")]
+    public async Task<IActionResult> Conectar(
+        [FromBody] ConexionMedidorRequest request)
+    {
+        var conectado = await _servicio.ConectarAsync(request);
+
+        if (!conectado)
+            return StatusCode(503, new { conectado = false, mensaje = "No se pudo conectar con el medidor." });
+
+        return Ok(new { conectado = true, mensaje = "Conexión establecida." });
+    }
+}

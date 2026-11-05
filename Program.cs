@@ -1,3 +1,6 @@
+using ComsPQLibrary.ComsPQServicio;
+using ComsPQLibrary.Modelos;
+using System.Collections.Generic;
 using MedicionPQ.Data;
 using MedicionPQ.Middleware;
 using MedicionPQ.Modelos.Medidores;
@@ -11,6 +14,8 @@ using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Events;
 using System.Text;
+
+
 
 // Punto de entrada: configura los servicios y el flujo HTTP de la API.
 var builder = WebApplication.CreateBuilder(args);
@@ -168,7 +173,10 @@ builder.Services.AddSingleton<JsonStore>();
 // Añade el documento OpenAPI nativo de ASP.NET Core.
 builder.Services.AddOpenApi();
 
+builder.Services.AddScoped<IConexionMedidorService, ConexionMedidorService>();
+
 var app = builder.Build();
+
 
 // Crea una sola vez el administrador inicial cuando se configura una contraseña de bootstrap externa.
 await using (var scope = app.Services.CreateAsyncScope())
