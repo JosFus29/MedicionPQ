@@ -31,20 +31,18 @@ public class ConexionMedidorService : IConexionMedidorService
         var protocoloOrigen = _jsonStore.CargarProtocolo();
         var transporte = _jsonStore.CargarTransporte();
 
-        // TEMPORAL: confirmar qué IP y puerto leyó JsonStore durante el diagnóstico de conexión.
-        _logger.LogInformation(
-            "Configuración Ethernet leída: IP='{Ip}', puerto={Port}",
-            transporte.EthernetParams.Ip,
-            transporte.EthernetParams.Port);
-
         var protocolo = new ComsProtocoloConfig
         {
             Id = protocoloOrigen.Id,
-            TipoTransporte = protocoloOrigen.TipoTransporte,
+            TipoTransporte = request.TipoTransporte,
             DataPacker = protocoloOrigen.DataPacker,
             UsarRF = protocoloOrigen.UsarRF,
             PubTramasRxTx = protocoloOrigen.PubTramasRxTx
         };
+
+        _logger.LogInformation(
+            "Transporte seleccionado para la conexión: {TipoTransporte}",
+            protocolo.TipoTransporte);
 
         var parametros = new List<ParametroComs>();
 
@@ -59,6 +57,12 @@ public class ConexionMedidorService : IConexionMedidorService
         }
         else if (protocolo.TipoTransporte == 2)
         {
+            // TEMPORAL: confirmar qué IP y puerto leyó JsonStore durante el diagnóstico de conexión.
+            _logger.LogInformation(
+                "Configuración Ethernet leída: IP='{Ip}', puerto={Port}",
+                transporte.EthernetParams.Ip,
+                transporte.EthernetParams.Port);
+
             parametros.Add(new ParametroComs { Name = "IP", Valor = transporte.EthernetParams.Ip });
             parametros.Add(new ParametroComs { Name = "Port", Valor = transporte.EthernetParams.Port });
             parametros.Add(new ParametroComs { Name = "Timeout", Valor = transporte.EthernetParams.Timeout });
