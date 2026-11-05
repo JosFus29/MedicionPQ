@@ -52,7 +52,7 @@ public class Usuario
         /// <summary>Cuenta sin permisos administrativos.</summary>
         Usuario = 2,
         /// <summary>Superadministrador con todos los permisos, incluida la edición de PuntosIO.</summary>
-        SuperAdministrador = 5
+        SuperAdministrador = 3
     }
 
     /// <summary>

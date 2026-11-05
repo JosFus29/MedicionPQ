@@ -1,0 +1,15 @@
+{
+  "SerialParams": {
+    "COM": "COM7",
+    "BaudRate": 38400,
+    "Paridad": 0,
+    "BitsDatos": 8,
+    "BitsParo": 1,
+    "Timeout": 5000
+  },
+  "EthernetParams": {
+    "Ip": "200.0.113.62",
+    "Port": 1000,
+    "Timeout": 6000
+  }
+}

@@ -1,7 +1,11 @@
-using System.Text;
+using ComsPQLibrary.ComsPQServicio;
+using ComsPQLibrary.Modelos;
+using System.Collections.Generic;
 using MedicionPQ.Data;
 using MedicionPQ.Middleware;
+using MedicionPQ.Modelos.Medidores;
 using MedicionPQ.Services;
+using MedicionPQ.Services.Medidores;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -9,9 +13,18 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Events;
+using System.Text;
+
+
 
 // Punto de entrada: configura los servicios y el flujo HTTP de la API.
 var builder = WebApplication.CreateBuilder(args);
+
+/*builder.Configuration
+    .AddJsonFile("Jsons/appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"Jsons/appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
+*/
 
 // Configura Serilog como el sistema de logs de la API.
 // Escribe cada entrada en la consola y en un archivo .txt por día dentro de la carpeta Logs (se guardan 30 días).
@@ -152,10 +165,23 @@ builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
         policy.WithOrigins(frontendOrigins).AllowAnyHeader().AllowAnyMethod();
 }));
 
+// Valida la configuración de los archivos JSON de protocolo y transporte antes de iniciar la API.
+builder.Services.AddOptions<FuenteDatosOptions>()
+    .Bind(builder.Configuration.GetSection(FuenteDatosOptions.Seccion))
+    .Validate(o => !string.IsNullOrWhiteSpace(o.Archivos.Protocolo)
+                && !string.IsNullOrWhiteSpace(o.Archivos.Transporte),
+              "Configura FuenteDatos:Archivos:Protocolo y Transporte.")
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<JsonStore>();
+
 // Añade el documento OpenAPI nativo de ASP.NET Core.
 builder.Services.AddOpenApi();
 
+builder.Services.AddScoped<IConexionMedidorService, ConexionMedidorService>();
+
 var app = builder.Build();
+
 
 // Crea una sola vez el administrador inicial cuando se configura una contraseña de bootstrap externa.
 await using (var scope = app.Services.CreateAsyncScope())
