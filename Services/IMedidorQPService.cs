@@ -5,6 +5,9 @@ namespace MedicionPQ.Services;
 /// <summary>Operaciones para registrar y actualizar medidores QP.</summary>
 public interface IMedidorQPService
 {
+    /// <summary>Lista los medidores disponibles para mostrarlos y seleccionarlos en clientes.</summary>
+    Task<List<MedidorQPListItemDto>> GetAllAsync();
+
     /// <summary>Guarda un medidor si su controlador existe y el estado es válido.</summary>
     Task<(MedidorQP? Medidor, string? Error)> CreateAsync(MedidorQPRequest request);
 

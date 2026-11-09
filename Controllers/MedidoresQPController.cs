@@ -16,6 +16,13 @@ public class MedidoresQPController : ControllerBase
     /// <summary>Inicializa el controlador HTTP con el servicio de medidores.</summary>
     public MedidoresQPController(IMedidorQPService service) => _service = service;
 
+    /// <summary>Lista medidores para que el frontend permita seleccionar el identificador de conexión.</summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(List<MedidorQPListItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAll() => Ok(await _service.GetAllAsync());
+
     /// <summary>Registra un medidor asociado a un controlador existente.</summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] MedidorQPRequest request)

@@ -12,6 +12,19 @@ public class MedidorQPService : IMedidorQPService
     /// <summary>Inicializa el servicio con el contexto de datos.</summary>
     public MedidorQPService(AppDbContext context) => _context = context;
 
+    /// <summary>Obtiene los campos de medidor que necesita un cliente para presentar una lista de selección.</summary>
+    public Task<List<MedidorQPListItemDto>> GetAllAsync() => _context.MedidoresQP
+        .AsNoTracking()
+        .OrderBy(medidor => medidor.descripcion)
+        .Select(medidor => new MedidorQPListItemDto
+        {
+            IdMedidor = medidor.idMedidor,
+            Descripcion = medidor.descripcion,
+            Edo = medidor.edo,
+            IdCtrlRF = medidor.idCtrlRF
+        })
+        .ToListAsync();
+
     /// <summary>Valida controlador y estado, crea el medidor y deja que la base genere su ID.</summary>
     public async Task<(MedidorQP? Medidor, string? Error)> CreateAsync(MedidorQPRequest request)
     {
