@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace MedicionPQ.Controllers;
 
-/// <summary>Expone la operación de conexión con un medidor.</summary>
+/// <summary>Expone la operación de conexión serial con un medidor.</summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "SuperAdministrador,Administrador")]
@@ -19,7 +19,7 @@ public class ConexionMedidorController : ControllerBase
         _servicio = servicio;
     }
 
-    /// <summary>Intenta conectar con el medidor indicado por dirRed.</summary>
+    /// <summary>Conecta con el medidor identificado por idMedidor.</summary>
     [HttpPost("conectar")]
     public async Task<IActionResult> Conectar(
         [FromBody] ConexionMedidorRequest request)

@@ -179,6 +179,7 @@ builder.Services.AddSingleton<JsonStore>();
 builder.Services.AddOpenApi();
 
 builder.Services.AddScoped<IConexionMedidorService, ConexionMedidorService>();
+builder.Services.AddSingleton<ComsPQClient>();
 
 var app = builder.Build();
 
