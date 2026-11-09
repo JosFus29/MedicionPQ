@@ -1,6 +1,6 @@
 {
   "SerialParams": {
-    "COM": "COM7",
+    "COM": "COM9",
     "BaudRate": 115200,
     "Paridad": 0,
     "BitsDatos": 8,
