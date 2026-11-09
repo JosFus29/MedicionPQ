@@ -1,4 +1,4 @@
-﻿using MedicionPQ.Modelos.Medidores;
+using MedicionPQ.Modelos.Medidores;
 using MedicionPQ.Services.Medidores;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,12 +19,24 @@ public class ConexionMedidorController : ControllerBase
         _servicio = servicio;
     }
 
-    /// <summary>Intenta conectar con el medidor indicado.</summary>
+    /// <summary>Intenta conectar con el medidor indicado por dirRed.</summary>
     [HttpPost("conectar")]
     public async Task<IActionResult> Conectar(
         [FromBody] ConexionMedidorRequest request)
     {
-        var conectado = await _servicio.ConectarAsync(request);
+        bool conectado;
+        try
+        {
+            conectado = await _servicio.ConectarAsync(request);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
+        }
 
         if (!conectado)
             return StatusCode(503, new { conectado = false, mensaje = "No se pudo conectar con el medidor." });
