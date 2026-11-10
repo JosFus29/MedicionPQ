@@ -104,7 +104,7 @@ public sealed class ComsPQClient
         _logger.LogDebug(
             "Esperando turno para llamar a la DLL. DirRed={DirRed}, DirRF={DirRF}",
             medidor.DirRed,
-            UsarRF ? medidor.DirRF : null);
+            medidor.DirRF);
 
         await _semaforo.WaitAsync();
         try
@@ -113,7 +113,7 @@ public sealed class ComsPQClient
                 "Llamando a ComsPQService.Conectar. DirRed={DirRed}, UsarRF={UsarRF}, DirRF={DirRF}",
                 medidor.DirRed,
                 UsarRF,
-                UsarRF ? medidor.DirRF : null);
+                medidor.DirRF);
 
             try
             {
@@ -124,7 +124,7 @@ public sealed class ComsPQClient
                         "ComsPQService.Conectar terminó con false; la DLL no confirmó la conexión. DirRed={DirRed}, UsarRF={UsarRF}, DirRF={DirRF}",
                         medidor.DirRed,
                         UsarRF,
-                        UsarRF ? medidor.DirRF : null);
+                        medidor.DirRF);
                 }
 
                 return conectado;
@@ -136,7 +136,7 @@ public sealed class ComsPQClient
                     "ComsPQLibrary lanzó una excepción durante Conectar. DirRed={DirRed}, UsarRF={UsarRF}, DirRF={DirRF}",
                     medidor.DirRed,
                     UsarRF,
-                    UsarRF ? medidor.DirRF : null);
+                    medidor.DirRF);
                 throw;
             }
         }

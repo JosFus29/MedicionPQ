@@ -2,7 +2,6 @@ using MedicionPQ.Data;
 using MedicionPQ.Modelos.Medidores;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
-using System.Globalization;
 using MedidorComs = ComsPQLibrary.Modelos.MedidorPQ;
 
 namespace MedicionPQ.Services.Medidores;
@@ -48,30 +47,18 @@ public class ConexionMedidorService : IConexionMedidorService
                 $"El medidor {datosMedidor.idMedidor} tiene una dirRed fuera del rango permitido por la DLL.");
         }
 
-        string? dirRfParaDll = null;
-        if (_comsClient.UsarRF)
-        {
-            if (string.IsNullOrWhiteSpace(datosMedidor.dirRF))
-            {
-                throw new InvalidOperationException(
-                    $"El medidor {datosMedidor.idMedidor} no tiene dirección MAC (dirRF) configurada en la BD.");
-            }
-
-            dirRfParaDll = NormalizarDirRf(datosMedidor.dirRF);
-        }
-
         _logger.LogInformation(
-            "Medidor de BD seleccionado: IdMedidor={IdMedidor}, dirRed={DirRed}, UsarRF={UsarRF}, dirRF BD='{DirRFBd}', dirRF DLL='{DirRfDll}'",
+            "Medidor de BD seleccionado: IdMedidor={IdMedidor}, dirRed={DirRed}, dirRF='{DirRF}', UsarRF={UsarRF}",
             datosMedidor.idMedidor,
             datosMedidor.dirRed,
-            _comsClient.UsarRF,
-            _comsClient.UsarRF ? datosMedidor.dirRF : null,
-            dirRfParaDll);
+            datosMedidor.dirRF,
+            _comsClient.UsarRF);
 
+        // La API adapta los datos al DTO; la DLL decide si utiliza DirRF según UsarRF.
         var medidorComs = new MedidorComs
         {
             DirRed = (ushort)datosMedidor.dirRed,
-            DirRF = dirRfParaDll
+            DirRF = datosMedidor.dirRF
         };
 
         var cronometro = Stopwatch.StartNew();
@@ -81,56 +68,15 @@ public class ConexionMedidorService : IConexionMedidorService
             medidorComs.DirRed,
             _comsClient.UsarRF);
 
-        try
-        {
-            var conectado = await _comsClient.ConectarAsync(medidorComs);
-            cronometro.Stop();
+        var conectado = await _comsClient.ConectarAsync(medidorComs);
+        cronometro.Stop();
 
-            _logger.LogInformation(
-                "Intento terminado: IdMedidor={IdMedidor}, conectado={Conectado}, duración={DuracionMs} ms",
-                datosMedidor.idMedidor,
-                conectado,
-                cronometro.ElapsedMilliseconds);
+        _logger.LogInformation(
+            "Intento terminado: IdMedidor={IdMedidor}, conectado={Conectado}, duración={DuracionMs} ms",
+            datosMedidor.idMedidor,
+            conectado,
+            cronometro.ElapsedMilliseconds);
 
-            return conectado;
-        }
-        catch (Exception ex)
-        {
-            cronometro.Stop();
-            _logger.LogError(
-                ex,
-                "Excepción al conectar IdMedidor={IdMedidor}, dirRed={DirRed}, UsarRF={UsarRF}, duración={DuracionMs} ms",
-                datosMedidor.idMedidor,
-                medidorComs.DirRed,
-                _comsClient.UsarRF,
-                cronometro.ElapsedMilliseconds);
-            throw;
-        }
-    }
-
-    /// <summary>Normaliza bytes hexadecimales de dirRF a minúsculas y separados por ':' para la DLL.</summary>
-    private static string NormalizarDirRf(string dirRF)
-    {
-        var segmentos = dirRF
-            .Trim()
-            .Replace('.', ':')
-            .Split(':', StringSplitOptions.None)
-            .Select(segmento => segmento.Trim())
-            .ToArray();
-
-        if (segmentos.Length == 0
-            || segmentos.Any(segmento =>
-                segmento.Length != 2
-                || !byte.TryParse(
-                    segmento,
-                    NumberStyles.HexNumber,
-                    CultureInfo.InvariantCulture,
-                    out _)))
-        {
-            throw new InvalidOperationException(
-                $"La dirRF '{dirRF}' no tiene formato hexadecimal válido. Usa bytes de dos dígitos separados por ':' (por ejemplo, 62:69:c0), sin agregar el prefijo 30.");
-        }
-
-        return string.Join(":", segmentos.Select(segmento => segmento.ToLowerInvariant()));
+        return conectado;
     }
 }
