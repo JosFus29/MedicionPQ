@@ -49,4 +49,43 @@ public class ConexionMedidorController : ControllerBase
 
         return Ok(new { conectado = true, mensaje = "Conexión establecida." });
     }
+
+    /// <summary>
+    /// Ejecuta una operación distinta de conectar: prepara la conexión y, si la DLL
+    /// confirma que conectó, llama a Sincronizar con el punto configurado en el servidor.
+    /// </summary>
+    [HttpPost("sincronizar")]
+    [ProducesResponseType(typeof(SincronizacionMedidorResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(SincronizacionMedidorResult), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> Sincronizar([FromBody] ConexionMedidorRequest request)
+    {
+        SincronizacionMedidorResult resultado;
+        try
+        {
+            resultado = await _servicio.SincronizarAsync(request);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Incluye configuración del punto ausente/inválida y direcciones inválidas.
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                conectado = false,
+                sincronizado = false,
+                mensaje = ex.Message
+            });
+        }
+
+        if (!resultado.Conectado || !resultado.Sincronizado)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, resultado);
+
+        return Ok(resultado);
+    }
 }

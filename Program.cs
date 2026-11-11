@@ -173,6 +173,17 @@ builder.Services.AddOptions<FuenteDatosOptions>()
               "Configura FuenteDatos:Archivos:Protocolo y Transporte.")
     .ValidateOnStart();
 
+// La conexión funciona independientemente del punto; Sincronizar requiere DirComsCEC real.
+// Se permite null para que la API pueda seguir arrancando y usando /conectar mientras se confirma.
+builder.Services.AddOptions<PuntoSincronizarOptions>()
+    .Bind(builder.Configuration.GetSection(PuntoSincronizarOptions.SectionName))
+    .Validate(opciones => opciones.DirComsCEC is null
+        || (opciones.DirComsCEC >= 0
+            && opciones.DirComsCEC <= ushort.MaxValue
+            && !string.IsNullOrWhiteSpace(opciones.Tag)),
+        "Configura un Tag y DirComsCEC entre 0 y 65535 para el punto de sincronización.")
+    .ValidateOnStart();
+
 builder.Services.AddSingleton<JsonStore>();
 
 // Añade el documento OpenAPI nativo de ASP.NET Core.

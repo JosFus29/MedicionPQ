@@ -111,4 +111,32 @@ Para producción, configura el dominio publicado del frontend mediante configura
 
 El servidor donde corre la API debe tener conectado el dispositivo RF en el COM configurado en `Jsons/TransporteConfig.json`. `Jsons/ProtocoloConfig.json` controla `UsarRF`. La dirección RF del medidor se obtiene de la base de datos mediante `idMedidor`.
 
-La operación de sincronización todavía no forma parte de este contrato.
+## Conectar y sincronizar son operaciones distintas
+
+`POST /api/ConexionMedidor/conectar` solo solicita conexión. No sincroniza el medidor.
+
+`POST /api/ConexionMedidor/sincronizar` ejecuta una secuencia independiente: la API llama primero a `Conectar` y, si la DLL confirma la conexión, llama a `Sincronizar` con el punto configurado en el servidor. Ambas llamadas se serializan juntas para que otra solicitud no interfiera con el puerto.
+
+El frontend no necesita llamar antes a `/conectar` para usar `/sincronizar`: esta ruta conecta como primer paso de su propia operación. Usa `/conectar` cuando solo se quiera comprobar o establecer la conexión, y `/sincronizar` cuando se necesiten las dos etapas.
+
+La petición del frontend es la misma y no incluye la dirección del punto:
+
+```json
+{
+  "idMedidor": 1
+}
+```
+
+Respuesta cuando ambas etapas tienen éxito (`200 OK`):
+
+```json
+{
+  "conectado": true,
+  "sincronizado": true,
+  "mensaje": "Conexión y sincronización establecidas."
+}
+```
+
+Si conecta pero no sincroniza, responde `503 Service Unavailable` con `conectado: true` y `sincronizado: false`. Si no conecta, no intenta sincronizar y devuelve ambos indicadores en `false`.
+
+El punto se configura en el servidor, en `Sincronizacion:Punto`, con `Tag` y `DirComsCEC`. Esta DLL usa `DirComsCEC` para el protocolo SimIV. El valor debe ser la dirección real confirmada para el medidor; `null` deja disponible `/conectar`, pero `/sincronizar` responde `503` hasta configurarlo. No se debe usar una dirección de prueba.

@@ -2,6 +2,7 @@ using MedicionPQ.Modelos.Medidores;
 using ComsProtocoloConfig = ComsPQLibrary.Modelos.ProtocoloConfig;
 using ParametroComs = ComsPQLibrary.Modelos.ParamT;
 using MedidorComs = ComsPQLibrary.Modelos.MedidorPQ;
+using PuntoIODtoComs = ComsPQLibrary.Modelos.PuntoIODto;
 using ServicioComs = ComsPQLibrary.ComsPQServicio.ComsPQService;
 
 namespace MedicionPQ.Services.Medidores;
@@ -109,40 +110,152 @@ public sealed class ComsPQClient
         await _semaforo.WaitAsync();
         try
         {
+            return await ConectarConLaDllAsync(medidor);
+        }
+        finally
+        {
+            _semaforo.Release();
+        }
+    }
+
+    /// <summary>
+    /// Ejecuta Conectar y luego Sincronizar en una sola sección exclusiva del puerto.
+    /// Esta operación es distinta de ConectarAsync: la sincronización solo se intenta
+    /// después de que la DLL confirme la conexión.
+    /// </summary>
+    public async Task<SincronizacionMedidorResult> ConectarYSincronizarAsync(
+        MedidorComs medidor,
+        PuntoIODtoComs puntoSincronizar)
+    {
+        _logger.LogDebug(
+            "Esperando turno para conectar y sincronizar. DirRed={DirRed}, PuntoTag={PuntoTag}, DirComsCEC={DirComsCEC}",
+            medidor.DirRed,
+            puntoSincronizar.Tag,
+            puntoSincronizar.DirComsCEC);
+
+        await _semaforo.WaitAsync();
+        try
+        {
+            bool conectado;
+            try
+            {
+                conectado = await ConectarConLaDllAsync(medidor);
+            }
+            catch (Exception)
+            {
+                // ConectarConLaDllAsync ya registra la excepción de la DLL.
+
+                return new SincronizacionMedidorResult
+                {
+                    Conectado = false,
+                    Sincronizado = false,
+                    Mensaje = "La DLL lanzó una excepción durante la conexión."
+                };
+            }
+
+            if (!conectado)
+            {
+                _logger.LogWarning(
+                    "Se omite Sincronizar porque ComsPQService.Conectar devolvió false. DirRed={DirRed}",
+                    medidor.DirRed);
+
+                return new SincronizacionMedidorResult
+                {
+                    Conectado = false,
+                    Sincronizado = false,
+                    Mensaje = "No se pudo conectar con el medidor; no se intentó sincronizar."
+                };
+            }
+
             _logger.LogInformation(
-                "Llamando a ComsPQService.Conectar. DirRed={DirRed}, UsarRF={UsarRF}, DirRF={DirRF}",
+                "Llamando a ComsPQService.Sincronizar. DirRed={DirRed}, PuntoTag={PuntoTag}, DirComsCEC={DirComsCEC}",
                 medidor.DirRed,
-                UsarRF,
-                medidor.DirRF);
+                puntoSincronizar.Tag,
+                puntoSincronizar.DirComsCEC);
 
             try
             {
-                var conectado = await _servicioComs.Conectar(medidor);
-                if (!conectado)
+                var sincronizado = await _servicioComs.Sincronizar(medidor, puntoSincronizar);
+                if (!sincronizado)
                 {
                     _logger.LogWarning(
-                        "ComsPQService.Conectar terminó con false; la DLL no confirmó la conexión. DirRed={DirRed}, UsarRF={UsarRF}, DirRF={DirRF}",
+                        "ComsPQService.Sincronizar devolvió false. DirRed={DirRed}, PuntoTag={PuntoTag}, DirComsCEC={DirComsCEC}",
                         medidor.DirRed,
-                        UsarRF,
-                        medidor.DirRF);
+                        puntoSincronizar.Tag,
+                        puntoSincronizar.DirComsCEC);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "Sincronización confirmada por la DLL. DirRed={DirRed}, PuntoTag={PuntoTag}",
+                        medidor.DirRed,
+                        puntoSincronizar.Tag);
                 }
 
-                return conectado;
+                return new SincronizacionMedidorResult
+                {
+                    Conectado = true,
+                    Sincronizado = sincronizado,
+                    Mensaje = sincronizado
+                        ? "Conexión y sincronización establecidas."
+                        : "El medidor conectó, pero la DLL no confirmó la sincronización."
+                };
             }
             catch (Exception ex)
             {
                 _logger.LogError(
                     ex,
-                    "ComsPQLibrary lanzó una excepción durante Conectar. DirRed={DirRed}, UsarRF={UsarRF}, DirRF={DirRF}",
+                    "ComsPQLibrary lanzó una excepción durante Sincronizar. DirRed={DirRed}, PuntoTag={PuntoTag}, DirComsCEC={DirComsCEC}",
                     medidor.DirRed,
-                    UsarRF,
-                    medidor.DirRF);
-                throw;
+                    puntoSincronizar.Tag,
+                    puntoSincronizar.DirComsCEC);
+
+                return new SincronizacionMedidorResult
+                {
+                    Conectado = true,
+                    Sincronizado = false,
+                    Mensaje = "El medidor conectó, pero la DLL lanzó una excepción durante la sincronización."
+                };
             }
         }
         finally
         {
             _semaforo.Release();
+        }
+    }
+
+    /// <summary>Invoca únicamente la operación Conectar de la DLL; no sincroniza el medidor.</summary>
+    private async Task<bool> ConectarConLaDllAsync(MedidorComs medidor)
+    {
+        _logger.LogInformation(
+            "Llamando a ComsPQService.Conectar. DirRed={DirRed}, UsarRF={UsarRF}, DirRF={DirRF}",
+            medidor.DirRed,
+            UsarRF,
+            medidor.DirRF);
+
+        try
+        {
+            var conectado = await _servicioComs.Conectar(medidor);
+            if (!conectado)
+            {
+                _logger.LogWarning(
+                    "ComsPQService.Conectar terminó con false; la DLL no confirmó la conexión. DirRed={DirRed}, UsarRF={UsarRF}, DirRF={DirRF}",
+                    medidor.DirRed,
+                    UsarRF,
+                    medidor.DirRF);
+            }
+
+            return conectado;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "ComsPQLibrary lanzó una excepción durante Conectar. DirRed={DirRed}, UsarRF={UsarRF}, DirRF={DirRF}",
+                medidor.DirRed,
+                UsarRF,
+                medidor.DirRF);
+            throw;
         }
     }
 }
