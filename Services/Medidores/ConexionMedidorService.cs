@@ -11,6 +11,8 @@ namespace MedicionPQ.Services.Medidores;
 /// <summary>Adapta registros de la base de datos a los DTO de ComsPQLibrary y coordina las operaciones del medidor.</summary>
 public class ConexionMedidorService : IConexionMedidorService
 {
+    private sealed record PuntoSincronizacionDb(int IdPunto, string Tag, int DirCCEC);
+
     private readonly AppDbContext _db;
     private readonly ComsPQClient _comsClient;
     private readonly ILogger<ConexionMedidorService> _logger;
@@ -62,25 +64,64 @@ public class ConexionMedidorService : IConexionMedidorService
         var (idMedidor, medidorComs) = await ObtenerMedidorComsAsync(request.IdMedidor);
 
         // IdPunto selecciona el registro PuntosIO; la DLL recibe el Tag y la dirección CEC de ese registro.
-        var puntoBd = await _db.PuntosIO
-            .AsNoTracking()
-            .Where(punto => punto.IdPunto == _puntoSincronizar.IdPunto)
-            .Select(punto => new
-            {
-                punto.IdPunto,
-                punto.Tag,
-                punto.DirCCEC
-            })
-            .SingleOrDefaultAsync();
+        _logger.LogInformation(
+            "Buscando punto de sincronización en PuntosIO: IdMedidor={IdMedidor}, IdPunto={IdPunto}",
+            idMedidor,
+            _puntoSincronizar.IdPunto);
+
+        var cronometroBusqueda = Stopwatch.StartNew();
+        PuntoSincronizacionDb? puntoBd;
+        try
+        {
+            puntoBd = await _db.PuntosIO
+                .AsNoTracking()
+                .Where(punto => punto.IdPunto == _puntoSincronizar.IdPunto)
+                .Select(punto => new PuntoSincronizacionDb(
+                    punto.IdPunto,
+                    punto.Tag,
+                    punto.DirCCEC))
+                .SingleOrDefaultAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Falló la consulta del punto de sincronización en PuntosIO: IdMedidor={IdMedidor}, IdPunto={IdPunto}",
+                idMedidor,
+                _puntoSincronizar.IdPunto);
+            throw;
+        }
+        finally
+        {
+            cronometroBusqueda.Stop();
+        }
 
         if (puntoBd is null)
         {
+            _logger.LogWarning(
+                "No se encontró el punto configurado para sincronización: IdMedidor={IdMedidor}, IdPunto={IdPunto}, DuracionConsultaMs={DuracionConsultaMs}",
+                idMedidor,
+                _puntoSincronizar.IdPunto,
+                cronometroBusqueda.ElapsedMilliseconds);
             throw new InvalidOperationException(
                 $"No existe un registro PuntosIO con el IdPunto configurado {_puntoSincronizar.IdPunto}.");
         }
 
+        _logger.LogInformation(
+            "Punto de sincronización encontrado: IdMedidor={IdMedidor}, IdPunto={IdPunto}, Tag={Tag}, DirCCEC={DirCCEC}, DuracionConsultaMs={DuracionConsultaMs}",
+            idMedidor,
+            puntoBd.IdPunto,
+            puntoBd.Tag,
+            puntoBd.DirCCEC,
+            cronometroBusqueda.ElapsedMilliseconds);
+
         if (puntoBd.DirCCEC is < 0 or > ushort.MaxValue)
         {
+            _logger.LogError(
+                "DirCCEC fuera del rango ushort requerido por la DLL: IdMedidor={IdMedidor}, IdPunto={IdPunto}, DirCCEC={DirCCEC}",
+                idMedidor,
+                puntoBd.IdPunto,
+                puntoBd.DirCCEC);
             throw new InvalidOperationException(
                 $"El registro PuntosIO {puntoBd.IdPunto} tiene un DirCCEC fuera del rango que admite la DLL.");
         }
@@ -91,6 +132,13 @@ public class ConexionMedidorService : IConexionMedidorService
             Tag = puntoBd.Tag,
             DirComsCEC = (ushort)puntoBd.DirCCEC
         };
+
+        _logger.LogDebug(
+            "Punto PuntosIO adaptado al DTO de ComsPQLibrary: IdPunto={IdPunto}, Tag={Tag}, DirCCEC={DirCCEC}, DirComsCEC={DirComsCEC}",
+            puntoBd.IdPunto,
+            puntoDll.Tag,
+            puntoBd.DirCCEC,
+            puntoDll.DirComsCEC);
 
         _logger.LogInformation(
             "Iniciando conexión y sincronización: IdMedidor={IdMedidor}, DirRed={DirRed}, IdPunto={IdPunto}, Tag={Tag}, DirCCEC={DirCCEC}, DirComsCEC={DirComsCEC}",
@@ -113,6 +161,104 @@ public class ConexionMedidorService : IConexionMedidorService
             cronometro.ElapsedMilliseconds);
 
         return resultado;
+    }
+
+    /// <summary>Obtiene de PuntosIO todos los puntos del grupo funcional 1 y solicita sus instantáneos a la DLL.</summary>
+    public async Task<InstantaneosMedidorResult> SolicitarInstantaneosAsync(ConexionMedidorRequest request)
+    {
+        var (idMedidor, medidorComs) = await ObtenerMedidorComsAsync(request.IdMedidor);
+
+        _logger.LogInformation(
+            "Buscando puntos instantáneos en PuntosIO: IdMedidor={IdMedidor}, IdGF={IdGF}",
+            idMedidor,
+            1);
+
+        var puntosBd = await _db.PuntosIO
+            .AsNoTracking()
+            .Where(punto => punto.IdGF == 1)
+            .OrderBy(punto => punto.DirCCEC)
+            .Select(punto => new
+            {
+                punto.IdPunto,
+                punto.Tag,
+                punto.DirCCEC,
+                punto.DirMB
+            })
+            .ToListAsync();
+
+        if (puntosBd.Count == 0)
+        {
+            _logger.LogWarning(
+                "No hay puntos PuntosIO con IdGF=1; no se llamará SolInstT. IdMedidor={IdMedidor}",
+                idMedidor);
+            throw new InvalidOperationException("No hay puntos configurados con IdGF = 1 para solicitar instantáneos.");
+        }
+
+        var puntosInvalidos = puntosBd
+            .Where(punto => punto.DirCCEC is < 0 or > ushort.MaxValue
+                || punto.DirMB is < 0 or > ushort.MaxValue)
+            .ToList();
+
+        if (puntosInvalidos.Count > 0)
+        {
+            _logger.LogError(
+                "Hay puntos instantáneos con direcciones fuera del rango ushort de la DLL. IdMedidor={IdMedidor}, IdPuntos={IdPuntos}",
+                idMedidor,
+                string.Join(",", puntosInvalidos.Select(punto => punto.IdPunto)));
+            throw new InvalidOperationException("Uno o más puntos con IdGF = 1 tienen direcciones fuera del rango que admite la DLL.");
+        }
+
+        var puntosDll = puntosBd
+            .Select(punto => new PuntoIODtoComs
+            {
+                Tag = punto.Tag,
+                DirComsCEC = (ushort)punto.DirCCEC,
+                DirModbus = (ushort)punto.DirMB
+            })
+            .ToList();
+
+        _logger.LogInformation(
+            "Se cargarán puntos instantáneos desde PuntosIO: IdMedidor={IdMedidor}, CantidadPuntos={CantidadPuntos}, IdGF={IdGF}, UsarRF={UsarRF}",
+            idMedidor,
+            puntosDll.Count,
+            1,
+            _comsClient.UsarRF);
+
+        var cronometro = Stopwatch.StartNew();
+        var (conectado, lecturaExitosa) = await _comsClient.ConectarYSolicitarInstantaneosAsync(medidorComs, puntosDll);
+        cronometro.Stop();
+
+        var puntosResultado = puntosBd
+            .Select((punto, indice) => new InstantaneoPuntoResult
+            {
+                IdPunto = punto.IdPunto,
+                Tag = punto.Tag,
+                DirCCEC = punto.DirCCEC,
+                DirModbus = punto.DirMB,
+                Valor = puntosDll[indice].Valor
+            })
+            .ToList();
+
+        _logger.LogInformation(
+            "Terminó la solicitud de instantáneos: IdMedidor={IdMedidor}, Conectado={Conectado}, LecturaExitosa={LecturaExitosa}, CantidadPuntos={CantidadPuntos}, DuracionMs={DuracionMs}",
+            idMedidor,
+            conectado,
+            lecturaExitosa,
+            puntosResultado.Count,
+            cronometro.ElapsedMilliseconds);
+
+        return new InstantaneosMedidorResult
+        {
+            IdMedidor = idMedidor,
+            Conectado = conectado,
+            LecturaExitosa = lecturaExitosa,
+            Mensaje = !conectado
+                ? "No se pudo conectar con el medidor."
+                : lecturaExitosa
+                    ? "Se solicitaron los valores instantáneos."
+                    : "El medidor conectó, pero no se confirmó la lectura de instantáneos.",
+            Puntos = puntosResultado
+        };
     }
 
     /// <summary>

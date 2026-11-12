@@ -17,4 +17,9 @@ public interface IConexionMedidorService
     /// <param name="request">Identificador del medidor a conectar y sincronizar.</param>
     /// <returns>Resultados independientes de conexión y sincronización.</returns>
     Task<SincronizacionMedidorResult> SincronizarAsync(ConexionMedidorRequest request);
+
+    /// <summary>Conecta con el medidor y solicita todos los puntos instantáneos con IdGF = 1.</summary>
+    /// <param name="request">Identificador del medidor que se consultará.</param>
+    /// <returns>Estado de conexión y los puntos con los valores obtenidos.</returns>
+    Task<InstantaneosMedidorResult> SolicitarInstantaneosAsync(ConexionMedidorRequest request);
 }

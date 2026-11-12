@@ -224,6 +224,79 @@ public sealed class ComsPQClient
         }
     }
 
+    /// <summary>
+    /// Conecta con el medidor y solicita instantáneos dentro del mismo turno exclusivo del puerto.
+    /// </summary>
+    public async Task<(bool Conectado, bool LecturaExitosa)> ConectarYSolicitarInstantaneosAsync(
+        MedidorComs medidor,
+        List<PuntoIODtoComs> puntos)
+    {
+        _logger.LogInformation(
+            "Iniciando conexión y solicitud de instantáneos: DirRed={DirRed}, CantidadPuntos={CantidadPuntos}, UsarRF={UsarRF}",
+            medidor.DirRed,
+            puntos.Count,
+            UsarRF);
+
+        await _semaforo.WaitAsync();
+        try
+        {
+            bool conectado;
+            try
+            {
+                conectado = await ConectarConLaDllAsync(medidor);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "La DLL lanzó una excepción al conectar antes de solicitar instantáneos. DirRed={DirRed}",
+                    medidor.DirRed);
+                return (false, false);
+            }
+
+            if (!conectado)
+            {
+                _logger.LogWarning(
+                    "No se solicitarán instantáneos porque Conectar devolvió false. DirRed={DirRed}",
+                    medidor.DirRed);
+                return (false, false);
+            }
+
+            try
+            {
+                var lecturaExitosa = await _servicioComs.SolInstT(medidor, puntos);
+                if (lecturaExitosa)
+                {
+                    _logger.LogInformation(
+                        "La DLL confirmó la solicitud de instantáneos. DirRed={DirRed}, CantidadPuntos={CantidadPuntos}",
+                        medidor.DirRed,
+                        puntos.Count);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "ComsPQService.SolInstT devolvió false. DirRed={DirRed}, CantidadPuntos={CantidadPuntos}",
+                        medidor.DirRed,
+                        puntos.Count);
+                }
+
+                return (true, lecturaExitosa);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "ComsPQLibrary lanzó una excepción durante SolInstT. DirRed={DirRed}, CantidadPuntos={CantidadPuntos}",
+                    medidor.DirRed,
+                    puntos.Count);
+                return (true, false);
+            }
+        }
+        finally
+        {
+            _semaforo.Release();
+        }
+    }
+
     /// <summary>Invoca únicamente la operación Conectar de la DLL; no sincroniza el medidor.</summary>
     private async Task<bool> ConectarConLaDllAsync(MedidorComs medidor)
     {

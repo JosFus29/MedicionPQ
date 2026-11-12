@@ -140,3 +140,19 @@ Respuesta cuando ambas etapas tienen éxito (`200 OK`):
 Si conecta pero no sincroniza, responde `503 Service Unavailable` con `conectado: true` y `sincronizado: false`. Si no conecta, no intenta sincronizar y devuelve ambos indicadores en `false`.
 
 El servidor usa `Sincronizacion:Punto:IdPunto` (actualmente `114`) para localizar el registro de la tabla `PuntosIO`. La API toma el `Tag` y `DirCCEC` de ese registro; copia `DirCCEC` al campo `PuntoIODto.DirComsCEC` que exige la DLL para SimIV. El `IdPunto` solo selecciona el registro en la base de datos: no se envía a la DLL. `/sincronizar` responde `503` si no existe el `IdPunto` configurado o si `DirCCEC` no cabe en el `ushort` de la DLL.
+
+## Solicitar valores instantáneos
+
+`POST /api/ConexionMedidor/instantaneos` conecta con el medidor identificado y llama a `ComsPQService.SolInstT`. La API carga todos los registros de `PuntosIO` cuyo `IdGF` es `1`; no se envía la lista de puntos desde el frontend.
+
+```json
+{
+  "idMedidor": 1
+}
+```
+
+Para cada punto, la API copia `Tag`, `DirCCEC` a `PuntoIODto.DirComsCEC` y `DirMB` a `PuntoIODto.DirModbus`. La DLL escribe el valor recibido en `PuntoIODto.Valor`; la respuesta incluye cada punto con ese valor:
+
+La respuesta contiene `idMedidor`, `conectado`, `lecturaExitosa`, `mensaje` y `puntos`. Cada elemento de `puntos` contiene `idPunto`, `tag`, `dirCCEC`, `dirModbus` y `valor`. Los puntos y sus direcciones son los que estén guardados en la base de datos para `IdGF = 1`.
+
+La operación completa (conexión y solicitud) se mantiene serializada para evitar que otra petición use el puerto COM al mismo tiempo. Responde `503` si no se pudo conectar, la DLL no confirmó la lectura, no hay puntos con `IdGF = 1` o alguna dirección no cabe en el `ushort` que requiere la DLL.

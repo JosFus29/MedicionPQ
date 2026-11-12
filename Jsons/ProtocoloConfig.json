@@ -2,6 +2,6 @@
   "Id": 1,
   "TipoTransporte": 1,
   "DataPacker": 0,
-  "UsarRF": false,
+  "UsarRF": true,
   "PubTramasRxTx": true
 }

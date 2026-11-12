@@ -88,4 +88,43 @@ public class ConexionMedidorController : ControllerBase
 
         return Ok(resultado);
     }
+
+    /// <summary>
+    /// Conecta con el medidor y solicita a la DLL los valores instantáneos de los puntos
+    /// asociados al grupo funcional 1.
+    /// </summary>
+    [HttpPost("instantaneos")]
+    [ProducesResponseType(typeof(InstantaneosMedidorResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(InstantaneosMedidorResult), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> SolicitarInstantaneos([FromBody] ConexionMedidorRequest request)
+    {
+        InstantaneosMedidorResult resultado;
+        try
+        {
+            resultado = await _servicio.SolicitarInstantaneosAsync(request);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Incluye una lista de puntos vacía o direcciones incompatibles con el DTO de la DLL.
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                conectado = false,
+                lecturaExitosa = false,
+                mensaje = ex.Message
+            });
+        }
+
+        if (!resultado.Conectado || !resultado.LecturaExitosa)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, resultado);
+
+        return Ok(resultado);
+    }
 }
