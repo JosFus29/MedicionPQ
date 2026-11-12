@@ -155,4 +155,27 @@ Para cada punto, la API copia `Tag`, `DirCCEC` a `PuntoIODto.DirComsCEC` y `DirM
 
 La respuesta contiene `idMedidor`, `conectado`, `lecturaExitosa`, `mensaje` y `puntos`. Cada elemento de `puntos` contiene `idPunto`, `tag`, `dirCCEC`, `dirModbus` y `valor`. Los puntos y sus direcciones son los que estén guardados en la base de datos para `IdGF = 1`.
 
+Ejemplo de llamada desde el frontend. Si la API devuelve `503`, el cuerpo sigue teniendo información útil, por ejemplo si alcanzó a conectar o qué mensaje mostrar:
+
+```js
+async function solicitarInstantaneos(apiUrl, token, idMedidor) {
+  const respuesta = await fetch(`${apiUrl}/api/ConexionMedidor/instantaneos`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ idMedidor })
+  });
+
+  const resultado = await respuesta.json();
+
+  if (!respuesta.ok) {
+    throw new Error(resultado.mensaje ?? `Error HTTP ${respuesta.status}`);
+  }
+
+  return resultado; // resultado.puntos contiene los valores instantáneos
+}
+```
+
 La operación completa (conexión y solicitud) se mantiene serializada para evitar que otra petición use el puerto COM al mismo tiempo. Responde `503` si no se pudo conectar, la DLL no confirmó la lectura, no hay puntos con `IdGF = 1` o alguna dirección no cabe en el `ushort` que requiere la DLL.

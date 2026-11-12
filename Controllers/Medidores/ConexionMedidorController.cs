@@ -115,10 +115,12 @@ public class ConexionMedidorController : ControllerBase
         {
             // Incluye una lista de puntos vacía o direcciones incompatibles con el DTO de la DLL.
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            InstantaneosMedidorResult
             {
-                conectado = false,
-                lecturaExitosa = false,
-                mensaje = ex.Message
+                IdMedidor = request.IdMedidor,
+                Conectado = false,
+                LecturaExitosa = false,
+                Mensaje = ex.Message
             });
         }
 
