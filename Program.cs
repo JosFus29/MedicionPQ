@@ -173,15 +173,11 @@ builder.Services.AddOptions<FuenteDatosOptions>()
               "Configura FuenteDatos:Archivos:Protocolo y Transporte.")
     .ValidateOnStart();
 
-// La conexión funciona independientemente del punto; Sincronizar requiere DirComsCEC real.
-// Se permite null para que la API pueda seguir arrancando y usando /conectar mientras se confirma.
+// La conexión funciona independientemente del punto; Sincronizar busca por IdPunto en PuntosIO.
 builder.Services.AddOptions<PuntoSincronizarOptions>()
     .Bind(builder.Configuration.GetSection(PuntoSincronizarOptions.SectionName))
-    .Validate(opciones => opciones.DirComsCEC is null
-        || (opciones.DirComsCEC >= 0
-            && opciones.DirComsCEC <= ushort.MaxValue
-            && !string.IsNullOrWhiteSpace(opciones.Tag)),
-        "Configura un Tag y DirComsCEC entre 0 y 65535 para el punto de sincronización.")
+    .Validate(opciones => opciones.IdPunto > 0,
+        "Configura un IdPunto válido en Sincronizacion:Punto:IdPunto.")
     .ValidateOnStart();
 
 builder.Services.AddSingleton<JsonStore>();

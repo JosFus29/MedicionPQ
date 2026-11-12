@@ -8,7 +8,7 @@ using PuntoIODtoComs = ComsPQLibrary.Modelos.PuntoIODto;
 
 namespace MedicionPQ.Services.Medidores;
 
-/// <summary>Busca los datos del medidor y los entrega al cliente serial de ComsPQLibrary.</summary>
+/// <summary>Adapta registros de la base de datos a los DTO de ComsPQLibrary y coordina las operaciones del medidor.</summary>
 public class ConexionMedidorService : IConexionMedidorService
 {
     private readonly AppDbContext _db;
@@ -16,7 +16,7 @@ public class ConexionMedidorService : IConexionMedidorService
     private readonly ILogger<ConexionMedidorService> _logger;
     private readonly PuntoSincronizarOptions _puntoSincronizar;
 
-    /// <summary>Inicializa el servicio con la base de datos y el cliente serial compartido.</summary>
+    /// <summary>Inicializa el servicio con la base de datos, el cliente DLL, el logger y la configuración del punto de sincronización.</summary>
     public ConexionMedidorService(
         AppDbContext db,
         ComsPQClient comsClient,
@@ -29,14 +29,14 @@ public class ConexionMedidorService : IConexionMedidorService
         _puntoSincronizar = puntoSincronizar.Value;
     }
 
-    /// <summary>Conecta con el medidor indicado por idMedidor, usando sus direcciones de la BD.</summary>
+    /// <summary>Conecta con el medidor identificado por su ID en la base de datos. No lo sincroniza.</summary>
     public async Task<bool> ConectarAsync(ConexionMedidorRequest request)
     {
         var (idMedidor, medidorComs) = await ObtenerMedidorComsAsync(request.IdMedidor);
 
         var cronometro = Stopwatch.StartNew();
         _logger.LogInformation(
-            "Iniciando conexión: IdMedidor={IdMedidor}, dirRed={DirRed}, UsarRF={UsarRF}",
+            "Iniciando solo conexión: IdMedidor={IdMedidor}, DirRed={DirRed}, UsarRF={UsarRF}",
             idMedidor,
             medidorComs.DirRed,
             _comsClient.UsarRF);
@@ -45,7 +45,7 @@ public class ConexionMedidorService : IConexionMedidorService
         cronometro.Stop();
 
         _logger.LogInformation(
-            "Intento terminado: IdMedidor={IdMedidor}, conectado={Conectado}, duración={DuracionMs} ms",
+            "Terminó la operación de solo conexión: IdMedidor={IdMedidor}, Conectado={Conectado}, DuracionMs={DuracionMs}",
             idMedidor,
             conectado,
             cronometro.ElapsedMilliseconds);
@@ -54,43 +54,51 @@ public class ConexionMedidorService : IConexionMedidorService
     }
 
     /// <summary>
-    /// Conecta y luego sincroniza el medidor mediante dos métodos distintos de la DLL.
-    /// El punto de sincronización es configuración del servidor; el frontend solo manda idMedidor.
+    /// Primero conecta y después llama al método de sincronización de la DLL con el punto seleccionado por IdPunto.
+    /// Es una operación distinta de ConectarAsync, que únicamente establece la conexión.
     /// </summary>
     public async Task<SincronizacionMedidorResult> SincronizarAsync(ConexionMedidorRequest request)
     {
         var (idMedidor, medidorComs) = await ObtenerMedidorComsAsync(request.IdMedidor);
 
-        if (_puntoSincronizar.DirComsCEC is null)
+        // IdPunto selecciona el registro PuntosIO; la DLL recibe el Tag y la dirección CEC de ese registro.
+        var puntoBd = await _db.PuntosIO
+            .AsNoTracking()
+            .Where(punto => punto.IdPunto == _puntoSincronizar.IdPunto)
+            .Select(punto => new
+            {
+                punto.IdPunto,
+                punto.Tag,
+                punto.DirCCEC
+            })
+            .SingleOrDefaultAsync();
+
+        if (puntoBd is null)
         {
             throw new InvalidOperationException(
-                "No se configuró Sincronizacion:Punto:DirComsCEC. Define la dirección SimIV confirmada antes de solicitar sincronización.");
+                $"No existe un registro PuntosIO con el IdPunto configurado {_puntoSincronizar.IdPunto}.");
         }
 
-        if (_puntoSincronizar.DirComsCEC is < 0 or > ushort.MaxValue)
+        if (puntoBd.DirCCEC is < 0 or > ushort.MaxValue)
         {
             throw new InvalidOperationException(
-                "Sincronizacion:Punto:DirComsCEC debe estar entre 0 y 65535.");
+                $"El registro PuntosIO {puntoBd.IdPunto} tiene un DirCCEC fuera del rango que admite la DLL.");
         }
 
-        if (string.IsNullOrWhiteSpace(_puntoSincronizar.Tag))
-        {
-            throw new InvalidOperationException(
-                "Sincronizacion:Punto:Tag no puede estar vacío.");
-        }
-
-        // En esta DLL el punto SimIV usa DirComsCEC. DirModbus y Valor no intervienen aquí.
+        // Para SimIV, ComsPQLibrary usa DirComsCEC. DirModbus y Valor no se utilizan aquí.
         var puntoDll = new PuntoIODtoComs
         {
-            Tag = _puntoSincronizar.Tag,
-            DirComsCEC = (ushort)_puntoSincronizar.DirComsCEC.Value
+            Tag = puntoBd.Tag,
+            DirComsCEC = (ushort)puntoBd.DirCCEC
         };
 
         _logger.LogInformation(
-            "Iniciando operación de sincronización: IdMedidor={IdMedidor}, DirRed={DirRed}, PuntoTag={PuntoTag}, DirComsCEC={DirComsCEC}",
+            "Iniciando conexión y sincronización: IdMedidor={IdMedidor}, DirRed={DirRed}, IdPunto={IdPunto}, Tag={Tag}, DirCCEC={DirCCEC}, DirComsCEC={DirComsCEC}",
             idMedidor,
             medidorComs.DirRed,
+            puntoBd.IdPunto,
             puntoDll.Tag,
+            puntoBd.DirCCEC,
             puntoDll.DirComsCEC);
 
         var cronometro = Stopwatch.StartNew();
@@ -98,7 +106,7 @@ public class ConexionMedidorService : IConexionMedidorService
         cronometro.Stop();
 
         _logger.LogInformation(
-            "Operación de sincronización terminada: IdMedidor={IdMedidor}, Conectado={Conectado}, Sincronizado={Sincronizado}, DuracionMs={DuracionMs}",
+            "Terminó la operación de conexión y sincronización: IdMedidor={IdMedidor}, Conectado={Conectado}, Sincronizado={Sincronizado}, DuracionMs={DuracionMs}",
             idMedidor,
             resultado.Conectado,
             resultado.Sincronizado,
@@ -108,8 +116,8 @@ public class ConexionMedidorService : IConexionMedidorService
     }
 
     /// <summary>
-    /// Busca una vez los datos del medidor y los adapta al DTO oficial de la DLL.
-    /// Este mapeo común evita mantener dos versiones distintas para conectar y sincronizar.
+    /// Lee el medidor una vez y adapta sus direcciones al DTO de la DLL.
+    /// La conexión y la sincronización reutilizan este mismo mapeo.
     /// </summary>
     private async Task<(int IdMedidor, MedidorComs Medidor)> ObtenerMedidorComsAsync(int idMedidor)
     {
@@ -130,17 +138,17 @@ public class ConexionMedidorService : IConexionMedidorService
         if (datos.dirRed is < 0 or > ushort.MaxValue)
         {
             throw new InvalidOperationException(
-                $"El medidor {datos.idMedidor} tiene una dirRed fuera del rango permitido por la DLL.");
+                $"El medidor {datos.idMedidor} tiene una dirRed fuera del rango que admite la DLL.");
         }
 
         _logger.LogInformation(
-            "Medidor de BD seleccionado: IdMedidor={IdMedidor}, dirRed={DirRed}, dirRF='{DirRF}', UsarRF={UsarRF}",
+            "Medidor seleccionado de la base de datos: IdMedidor={IdMedidor}, DirRed={DirRed}, DirRF='{DirRF}', UsarRF={UsarRF}",
             datos.idMedidor,
             datos.dirRed,
             datos.dirRF,
             _comsClient.UsarRF);
 
-        // La API solo adapta los campos del registro; la DLL decide si usa DirRF según UsarRF.
+        // Se pasan los valores de la base de datos; la DLL decide si utiliza DirRF.
         var medidorComs = new MedidorComs
         {
             DirRed = (ushort)datos.dirRed,

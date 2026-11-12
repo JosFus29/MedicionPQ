@@ -139,4 +139,4 @@ Respuesta cuando ambas etapas tienen éxito (`200 OK`):
 
 Si conecta pero no sincroniza, responde `503 Service Unavailable` con `conectado: true` y `sincronizado: false`. Si no conecta, no intenta sincronizar y devuelve ambos indicadores en `false`.
 
-El punto se configura en el servidor, en `Sincronizacion:Punto`, con `Tag` y `DirComsCEC`. Esta DLL usa `DirComsCEC` para el protocolo SimIV. El valor debe ser la dirección real confirmada para el medidor; `null` deja disponible `/conectar`, pero `/sincronizar` responde `503` hasta configurarlo. No se debe usar una dirección de prueba.
+El servidor usa `Sincronizacion:Punto:IdPunto` (actualmente `114`) para localizar el registro de la tabla `PuntosIO`. La API toma el `Tag` y `DirCCEC` de ese registro; copia `DirCCEC` al campo `PuntoIODto.DirComsCEC` que exige la DLL para SimIV. El `IdPunto` solo selecciona el registro en la base de datos: no se envía a la DLL. `/sincronizar` responde `503` si no existe el `IdPunto` configurado o si `DirCCEC` no cabe en el `ushort` de la DLL.
