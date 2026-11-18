@@ -52,9 +52,10 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 | Método y ruta | Acceso | Descripción |
 | --- | --- | --- |
 | `POST /api/Auth/login` | Público | Valida correo y contraseña; devuelve JWT e ID de usuario. |
-| `POST /api/Auth/register` | Público | Registra una cuenta nueva con rol Usuario; no acepta roles desde el cliente. Devuelve `201`. |
+| `POST /api/Auth/register` | Público | Registra una cuenta nueva con rol Usuario, inactiva hasta que un administrador la apruebe; no acepta roles desde el cliente. Devuelve `201`. |
 | `POST /api/Auth/renew` | Usuario autenticado | Renueva el JWT cuando quedan 60 segundos o menos. |
-| `POST /api/Contrasena/restablecer` | Público | El propio usuario que olvidó su contraseña crea una nueva con su correo. |
+| `POST /api/Contrasena/solicitar-codigo` | Público | Envía un código de verificación de 6 dígitos al correo de una cuenta activa (cualquier rol). |
+| `POST /api/Contrasena/restablecer` | Público | Cambia la contraseña con el correo, el código de verificación y la contraseña nueva. |
 | `GET /api/Users` | Administrador | Lista usuarios sin exponer hashes de contraseña. |
 | `GET /api/Users/admins` | Administrador | Lista usuarios con rol Administrador o SuperAdministrador. |
 | `PUT /api/Users/{id}` | Administrador | Actualiza correo, nombre, rol, estado y duración de sesión; no cambia contraseña. |
@@ -308,7 +309,16 @@ El token incluye identificador, correo, nombre y rol. Expira según `tiempoSesio
 
 `PUT /api/Users/{id}` recibe `correo`, `nombreUsuario`, `rol` (5 SuperAdministrador, 1 Administrador, 2 Usuario), `edo` (`true` activo) y `tiempoSesion` (1 a 1440 minutos). Administrador recibe `403` si intenta asignar rol 5 o editar cualquier cuenta que ya tenga rol SuperAdministrador; solo SuperAdministrador puede editar esas cuentas. El frontend debería ocultar el botón Editar en las filas de SuperAdministrador, aunque la API aplica la restricción por sí misma.
 
-Cualquier persona puede registrarse mediante `POST /api/Auth/register`, enviando `correo`, `contrasena` y `nombreUsuario`. La contraseña nueva debe tener de 8 a 16 caracteres, una mayúscula, una minúscula, un número y un carácter especial, sin espacios; letras acentuadas cuentan como letras. La API asigna siempre el rol `Usuario`; los correos duplicados devuelven `409` y los datos inválidos `400`. El login no aplica estas reglas a contraseñas ya guardadas. Ningún Administrador ni SuperAdministrador puede cambiar la contraseña de otra cuenta. El propio usuario que olvidó su contraseña la restablece con `POST /api/Contrasena/restablecer`, enviando `correo` y `nuevaContrasena` (misma política que el registro); no requiere sesión ni correo de verificación. Riesgo aceptado: quien conozca el correo de una cuenta activa puede cambiar su contraseña; cada cambio queda en el log de auditoría.
+Cualquier persona puede registrarse mediante `POST /api/Auth/register`, enviando `correo`, `contrasena` y `nombreUsuario`. La contraseña nueva debe tener de 8 a 16 caracteres, una mayúscula, una minúscula, un número y un carácter especial, sin espacios; letras acentuadas cuentan como letras. La API asigna siempre el rol `Usuario`; los correos duplicados devuelven `409` y los datos inválidos `400`. El login no aplica estas reglas a contraseñas ya guardadas. La cuenta registrada queda **inactiva** (`edo = false`): no puede iniciar sesión hasta que un Administrador o SuperAdministrador la apruebe activándola con `PUT /api/Users/{id}` y `edo: true`. Mientras tanto, el login responde `401` con el mensaje de cuenta pendiente de aprobación o desactivada.
+
+Cambio de contraseña con código de verificación (igual para Usuario, Administrador y SuperAdministrador; es el único camino para cambiar una contraseña):
+
+1. `POST /api/Contrasena/solicitar-codigo` con `{ "correo": "..." }`. Si el correo pertenece a una cuenta activa, envía un código de 6 dígitos. Siempre responde `200` con el mismo mensaje, exista o no la cuenta.
+2. `POST /api/Contrasena/restablecer` con `{ "correo": "...", "codigo": "123456", "nuevaContrasena": "..." }`. La contraseña nueva sigue la misma política que el registro y debe ser distinta de la actual.
+
+El código vence en 15 minutos, solo se usa una vez, se invalida tras 5 intentos incorrectos y no se puede pedir otro antes de 60 segundos; solo se guarda su hash. Ningún Administrador ni SuperAdministrador puede cambiar la contraseña de otra cuenta, porque el código solo llega al dueño del correo. Requiere la tabla `RecuperacionContrasena` (`Database/Scripts/20261118_RecuperacionContrasena.sql`).
+
+El correo se envía por SMTP con la sección `Email` de la configuración: `Email:Host`, `Email:Puerto` (587 por defecto), `Email:Usuario`, `Email:Contrasena`, `Email:Remitente` (por defecto el usuario) y `Email:UsarSsl` (true por defecto). La contraseña va en User Secrets o en variables de entorno (`Email__Contrasena`), nunca en `appsettings.json`. En desarrollo, si no hay `Email:Host`, el correo se muestra solo en la consola (modo prueba) y no se envía.
 
 Los usuarios se devuelven como DTO con `idUsuario`, `correo`, `nombreUsuario`, `rol`, `edo` y `tiempoSesion`; el hash nunca se devuelve.
 

@@ -17,6 +17,12 @@ public class AppDbContext : DbContext
     /// </summary>
     public DbSet<Usuario> Usuarios { get; set; }
 
+    /// <summary>
+    /// Códigos de verificación para cambiar contraseñas, asociados a la tabla <c>RecuperacionContrasena</c>.
+    /// Solo guarda el hash de cada código, su vencimiento y si ya se usó.
+    /// </summary>
+    public DbSet<RecuperacionContrasena> RecuperacionesContrasena { get; set; }
+
     /// <summary>Conjunto de controladores RF asociado a la tabla <c>ControladorRF</c>.</summary>
     public DbSet<ControladorRF> ControladoresRF { get; set; }
 
