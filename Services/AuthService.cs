@@ -7,6 +7,13 @@ namespace MedicionPQ.Services;
 /// <summary>Valida credenciales y gestiona los JWT de usuarios activos.</summary>
 public class AuthService : IAuthService
 {
+    /// <summary>
+    /// Mensaje para una cuenta con <c>edo = false</c>: puede ser una cuenta recién registrada que todavía
+    /// no aprueba un administrador, o una que un administrador desactivó. Solo se muestra si la contraseña es correcta.
+    /// </summary>
+    public const string MensajeCuentaInactiva =
+        "Tu cuenta está pendiente de aprobación o fue desactivada. Un administrador debe activarla para que puedas iniciar sesión.";
+
     private readonly AppDbContext _context;
     private readonly TokenService _tokenService;
     private readonly IPasswordService _passwordService;
@@ -32,7 +39,7 @@ public class AuthService : IAuthService
 
         var passwordValida = _passwordService.VerifyPassword(usuarioEnDb.contrasena, contrasena);
         if (!passwordValida) return (false, "Credenciales incorrectas.", string.Empty, null, 0, null);
-        if (!usuarioEnDb.edo) return (false, "El usuario está inactivo.", string.Empty, null, 0, null);
+        if (!usuarioEnDb.edo) return (false, MensajeCuentaInactiva, string.Empty, null, 0, null);
         if (usuarioEnDb.tiempoSesion is < 1 or > 1440)
             return (false, "El tiempo de sesión configurado para el usuario no es válido.", string.Empty, null, 0, null);
 
