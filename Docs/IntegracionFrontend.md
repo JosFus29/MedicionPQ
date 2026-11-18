@@ -76,7 +76,7 @@ Respuestas principales:
 - `401 Unauthorized`: falta el token o expiró.
 - `403 Forbidden`: el usuario no tiene el rol requerido.
 - `404 Not Found`: no existe ese `idMedidor`.
-- `503 Service Unavailable`: la DLL no consiguió establecer comunicación con el medidor.
+- `503 Service Unavailable`: la DLL no consiguió establecer comunicación con el medidor, lanzó una excepción al conectar, el `dirRed` del medidor no cabe en el `ushort` de la DLL, o el puerto estuvo ocupado por otra solicitud más de 30 s (en ese caso conviene reintentar).
 
 Ejemplo JavaScript:
 
@@ -141,9 +141,16 @@ Si conecta pero no sincroniza, responde `503 Service Unavailable` con `conectado
 
 El servidor usa `Sincronizacion:Punto:IdPunto` (actualmente `114`) para localizar el registro de la tabla `PuntosIO`. La API toma el `Tag` y `DirCCEC` de ese registro; copia `DirCCEC` al campo `PuntoIODto.DirComsCEC` que exige la DLL para SimIV. El `IdPunto` solo selecciona el registro en la base de datos: no se envía a la DLL. `/sincronizar` responde `503` si no existe el `IdPunto` configurado o si `DirCCEC` no cabe en el `ushort` de la DLL.
 
-## Solicitar valores instantáneos
+## Solicitar lecturas por grupo funcional
 
-`POST /api/ConexionMedidor/instantaneos` conecta con el medidor identificado y llama a `ComsPQService.SolInstT`. La API carga todos los registros de `PuntosIO` cuyo `IdGF` es `1`; no se envía la lista de puntos desde el frontend.
+Todas estas rutas funcionan igual: el frontend solo manda `idMedidor`, la API carga de `PuntosIO` los registros activos (`Edo = 1`) del grupo funcional (`IdGF`, tabla `IO_GrupoFuncional`), conecta con el medidor y llama al método de la DLL que corresponde al grupo.
+
+| Ruta (`POST`) | Grupo | `IdGF` | Método de la DLL |
+|---|---|---|---|
+| `/api/ConexionMedidor/instantaneos` | Instantáneos | `1` | `SolInstT` |
+| `/api/ConexionMedidor/variables5min` | Variables 5 minutales (UV5M) | `2` | `SolUV5M` |
+| `/api/ConexionMedidor/consumos` | Consumos | `3` | `SolConsumos` |
+| `/api/ConexionMedidor/calidadpotencia` | Calidad de la potencia | `5` | `SolCalPot` |
 
 ```json
 {
@@ -151,15 +158,16 @@ El servidor usa `Sincronizacion:Punto:IdPunto` (actualmente `114`) para localiza
 }
 ```
 
-Para cada punto, la API copia `Tag`, `DirCCEC` a `PuntoIODto.DirComsCEC` y `DirMB` a `PuntoIODto.DirModbus`. La DLL escribe el valor recibido en `PuntoIODto.Valor`; la respuesta incluye cada punto con ese valor:
+Para cada punto, la API copia `Tag`, `DirCCEC` a `PuntoIODto.DirComsCEC` y `DirMB` a `PuntoIODto.DirModbus`. La DLL escribe el valor recibido en `PuntoIODto.Valor`; la respuesta incluye cada punto con ese valor.
 
-La respuesta contiene `idMedidor`, `conectado`, `lecturaExitosa`, `mensaje` y `puntos`. Cada elemento de `puntos` contiene `idPunto`, `tag`, `dirCCEC`, `dirModbus` y `valor`. Los puntos y sus direcciones son los que estén guardados en la base de datos para `IdGF = 1`.
+La respuesta contiene `idMedidor`, `idGF`, `conectado`, `lecturaExitosa`, `mensaje` y `puntos`. Cada elemento de `puntos` contiene `idPunto`, `tag`, `dirCCEC`, `dirModbus` y `valor`. Los puntos y sus direcciones son los que estén guardados en la base de datos para ese `IdGF` con `Edo = 1`; los puntos inactivos no se piden ni aparecen en la respuesta.
 
 Ejemplo de llamada desde el frontend. Si la API devuelve `503`, el cuerpo sigue teniendo información útil, por ejemplo si alcanzó a conectar o qué mensaje mostrar:
 
 ```js
-async function solicitarInstantaneos(apiUrl, token, idMedidor) {
-  const respuesta = await fetch(`${apiUrl}/api/ConexionMedidor/instantaneos`, {
+// ruta: "instantaneos", "variables5min", "consumos" o "calidadpotencia"
+async function solicitarGrupo(apiUrl, token, ruta, idMedidor) {
+  const respuesta = await fetch(`${apiUrl}/api/ConexionMedidor/${ruta}`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
@@ -174,8 +182,8 @@ async function solicitarInstantaneos(apiUrl, token, idMedidor) {
     throw new Error(resultado.mensaje ?? `Error HTTP ${respuesta.status}`);
   }
 
-  return resultado; // resultado.puntos contiene los valores instantáneos
+  return resultado; // resultado.puntos contiene los valores leídos
 }
 ```
 
-La operación completa (conexión y solicitud) se mantiene serializada para evitar que otra petición use el puerto COM al mismo tiempo. Responde `503` si no se pudo conectar, la DLL no confirmó la lectura, no hay puntos con `IdGF = 1` o alguna dirección no cabe en el `ushort` que requiere la DLL.
+La operación completa (conexión y solicitud) se mantiene serializada para evitar que otra petición use el puerto COM al mismo tiempo. Responde `503` si no se pudo conectar, la DLL no confirmó la lectura, no hay puntos activos con ese `IdGF`, el puerto estuvo ocupado por otra solicitud más de 30 s o alguna dirección no cabe en el `ushort` que requiere la DLL.

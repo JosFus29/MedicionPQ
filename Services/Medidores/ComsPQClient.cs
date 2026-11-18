@@ -17,6 +17,12 @@ public sealed class ComsPQClient
     private readonly ILogger<ComsPQClient> _logger;
     private readonly SemaphoreSlim _semaforo = new(1, 1);
 
+    /// <summary>
+    /// Tiempo máximo que una solicitud espera a que se libere el puerto. Si otra operación lo ocupa más tiempo,
+    /// se lanza <see cref="PuertoOcupadoException"/> en lugar de acumular peticiones indefinidamente.
+    /// </summary>
+    private static readonly TimeSpan EsperaMaximaPuerto = TimeSpan.FromSeconds(30);
+
     /// <summary>Indica si la configuración JSON activa el envío por radiofrecuencia.</summary>
     public bool UsarRF { get; }
 
@@ -99,18 +105,44 @@ public sealed class ComsPQClient
             ex.Message);
     }
 
-    /// <summary>Solicita a la DLL conectar con un medidor. Evita llamadas concurrentes al puerto serial.</summary>
-    public async Task<bool> ConectarAsync(MedidorComs medidor)
+    /// <summary>
+    /// Espera el turno exclusivo del puerto como máximo <see cref="EsperaMaximaPuerto"/>.
+    /// Si no lo obtiene, lanza <see cref="PuertoOcupadoException"/>; quien lo obtiene debe liberar el semáforo.
+    /// </summary>
+    private async Task EsperarTurnoAsync(string operacion, MedidorComs medidor)
     {
         _logger.LogDebug(
-            "Esperando turno para llamar a la DLL. DirRed={DirRed}, DirRF={DirRF}",
+            "Esperando turno del puerto para {Operacion}. DirRed={DirRed}, DirRF={DirRF}",
+            operacion,
             medidor.DirRed,
             medidor.DirRF);
 
-        await _semaforo.WaitAsync();
+        if (!await _semaforo.WaitAsync(EsperaMaximaPuerto))
+        {
+            _logger.LogWarning(
+                "No se obtuvo el turno del puerto para {Operacion} después de {EsperaSegundos} s. DirRed={DirRed}",
+                operacion,
+                EsperaMaximaPuerto.TotalSeconds,
+                medidor.DirRed);
+            throw new PuertoOcupadoException(EsperaMaximaPuerto);
+        }
+    }
+
+    /// <summary>
+    /// Solicita a la DLL conectar con un medidor. Evita llamadas concurrentes al puerto serial.
+    /// Devuelve false si la DLL no conectó o lanzó una excepción (ya registrada en el log).
+    /// </summary>
+    public async Task<bool> ConectarAsync(MedidorComs medidor)
+    {
+        await EsperarTurnoAsync("Conectar", medidor);
         try
         {
             return await ConectarConLaDllAsync(medidor);
+        }
+        catch (Exception)
+        {
+            // ConectarConLaDllAsync ya registra la excepción de la DLL.
+            return false;
         }
         finally
         {
@@ -127,13 +159,7 @@ public sealed class ComsPQClient
         MedidorComs medidor,
         PuntoIODtoComs puntoSincronizar)
     {
-        _logger.LogDebug(
-            "Esperando turno para conectar y sincronizar. DirRed={DirRed}, PuntoTag={PuntoTag}, DirComsCEC={DirComsCEC}",
-            medidor.DirRed,
-            puntoSincronizar.Tag,
-            puntoSincronizar.DirComsCEC);
-
-        await _semaforo.WaitAsync();
+        await EsperarTurnoAsync("Conectar y sincronizar", medidor);
         try
         {
             bool conectado;
@@ -225,19 +251,25 @@ public sealed class ComsPQClient
     }
 
     /// <summary>
-    /// Conecta con el medidor y solicita instantáneos dentro del mismo turno exclusivo del puerto.
+    /// Conecta con el medidor y solicita los puntos de un grupo dentro del mismo turno exclusivo del puerto.
+    /// El método de la DLL depende del grupo (ver <see cref="SolicitarALaDll"/>).
     /// </summary>
-    public async Task<(bool Conectado, bool LecturaExitosa)> ConectarYSolicitarInstantaneosAsync(
+    public async Task<(bool Conectado, bool LecturaExitosa)> ConectarYSolicitarGrupoAsync(
         MedidorComs medidor,
-        List<PuntoIODtoComs> puntos)
+        List<PuntoIODtoComs> puntos,
+        GrupoLectura grupo)
     {
+        var metodoDll = NombreMetodoDll(grupo);
+
         _logger.LogInformation(
-            "Iniciando conexión y solicitud de instantáneos: DirRed={DirRed}, CantidadPuntos={CantidadPuntos}, UsarRF={UsarRF}",
+            "Iniciando conexión y solicitud de {Grupo}: DirRed={DirRed}, CantidadPuntos={CantidadPuntos}, MetodoDll={MetodoDll}, UsarRF={UsarRF}",
+            grupo.Descripcion(),
             medidor.DirRed,
             puntos.Count,
+            metodoDll,
             UsarRF);
 
-        await _semaforo.WaitAsync();
+        await EsperarTurnoAsync($"Conectar y {metodoDll}", medidor);
         try
         {
             bool conectado;
@@ -245,36 +277,37 @@ public sealed class ComsPQClient
             {
                 conectado = await ConectarConLaDllAsync(medidor);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex,
-                    "La DLL lanzó una excepción al conectar antes de solicitar instantáneos. DirRed={DirRed}",
-                    medidor.DirRed);
+                // ConectarConLaDllAsync ya registra la excepción de la DLL.
                 return (false, false);
             }
 
             if (!conectado)
             {
                 _logger.LogWarning(
-                    "No se solicitarán instantáneos porque Conectar devolvió false. DirRed={DirRed}",
+                    "No se llamará {MetodoDll} porque Conectar devolvió false. DirRed={DirRed}",
+                    metodoDll,
                     medidor.DirRed);
                 return (false, false);
             }
 
             try
             {
-                var lecturaExitosa = await _servicioComs.SolInstT(medidor, puntos);
+                var lecturaExitosa = await SolicitarALaDll(grupo, medidor, puntos);
                 if (lecturaExitosa)
                 {
                     _logger.LogInformation(
-                        "La DLL confirmó la solicitud de instantáneos. DirRed={DirRed}, CantidadPuntos={CantidadPuntos}",
+                        "La DLL confirmó {MetodoDll}. DirRed={DirRed}, CantidadPuntos={CantidadPuntos}",
+                        metodoDll,
                         medidor.DirRed,
                         puntos.Count);
                 }
                 else
                 {
                     _logger.LogWarning(
-                        "ComsPQService.SolInstT devolvió false. DirRed={DirRed}, CantidadPuntos={CantidadPuntos}",
+                        "ComsPQService.{MetodoDll} devolvió false. DirRed={DirRed}, CantidadPuntos={CantidadPuntos}",
+                        metodoDll,
                         medidor.DirRed,
                         puntos.Count);
                 }
@@ -285,7 +318,8 @@ public sealed class ComsPQClient
             {
                 _logger.LogError(
                     ex,
-                    "ComsPQLibrary lanzó una excepción durante SolInstT. DirRed={DirRed}, CantidadPuntos={CantidadPuntos}",
+                    "ComsPQLibrary lanzó una excepción durante {MetodoDll}. DirRed={DirRed}, CantidadPuntos={CantidadPuntos}",
+                    metodoDll,
                     medidor.DirRed,
                     puntos.Count);
                 return (true, false);
@@ -296,6 +330,26 @@ public sealed class ComsPQClient
             _semaforo.Release();
         }
     }
+
+    /// <summary>Llama al método de la DLL que lee el grupo; la DLL escribe cada lectura en PuntoIODto.Valor.</summary>
+    private Task<bool> SolicitarALaDll(GrupoLectura grupo, MedidorComs medidor, List<PuntoIODtoComs> puntos) => grupo switch
+    {
+        GrupoLectura.Instantaneos => _servicioComs.SolInstT(medidor, puntos),
+        GrupoLectura.Variables5Min => _servicioComs.SolUV5M(medidor, puntos),
+        GrupoLectura.Consumos => _servicioComs.SolConsumos(medidor, puntos),
+        GrupoLectura.CalidadPotencia => _servicioComs.SolCalPot(medidor, puntos),
+        _ => throw new ArgumentOutOfRangeException(nameof(grupo), grupo, "Grupo sin método de lectura en la DLL.")
+    };
+
+    /// <summary>Nombre del método de la DLL que corresponde al grupo, para los logs.</summary>
+    private static string NombreMetodoDll(GrupoLectura grupo) => grupo switch
+    {
+        GrupoLectura.Instantaneos => nameof(ServicioComs.SolInstT),
+        GrupoLectura.Variables5Min => nameof(ServicioComs.SolUV5M),
+        GrupoLectura.Consumos => nameof(ServicioComs.SolConsumos),
+        GrupoLectura.CalidadPotencia => nameof(ServicioComs.SolCalPot),
+        _ => grupo.ToString()
+    };
 
     /// <summary>Invoca únicamente la operación Conectar de la DLL; no sincroniza el medidor.</summary>
     private async Task<bool> ConectarConLaDllAsync(MedidorComs medidor)

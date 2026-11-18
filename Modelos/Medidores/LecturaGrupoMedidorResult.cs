@@ -1,26 +1,32 @@
 namespace MedicionPQ.Modelos.Medidores;
 
-/// <summary>Resultado de pedir los valores instantáneos de un medidor.</summary>
-public sealed class InstantaneosMedidorResult
+/// <summary>
+/// Resultado de pedir al medidor los valores de un grupo de PuntosIO
+/// (instantáneos, variables 5 minutales, consumos o calidad de la potencia).
+/// </summary>
+public sealed class LecturaGrupoMedidorResult
 {
     /// <summary>Identificador del medidor consultado.</summary>
     public int IdMedidor { get; init; }
 
+    /// <summary>idGF del grupo funcional solicitado (tabla IO_GrupoFuncional).</summary>
+    public int IdGF { get; init; }
+
     /// <summary>Indica si la DLL confirmó la conexión con el medidor.</summary>
     public bool Conectado { get; init; }
 
-    /// <summary>Indica si la DLL confirmó la solicitud de instantáneos.</summary>
+    /// <summary>Indica si la DLL confirmó la lectura del grupo.</summary>
     public bool LecturaExitosa { get; init; }
 
     /// <summary>Descripción del resultado de la operación.</summary>
     public string Mensaje { get; init; } = string.Empty;
 
     /// <summary>Puntos consultados y los valores escritos por la DLL.</summary>
-    public IReadOnlyList<InstantaneoPuntoResult> Puntos { get; init; } = Array.Empty<InstantaneoPuntoResult>();
+    public IReadOnlyList<LecturaPuntoResult> Puntos { get; init; } = Array.Empty<LecturaPuntoResult>();
 }
 
-/// <summary>Valor instantáneo obtenido para un punto de entrada/salida.</summary>
-public sealed class InstantaneoPuntoResult
+/// <summary>Valor obtenido del medidor para un punto de entrada/salida.</summary>
+public sealed class LecturaPuntoResult
 {
     /// <summary>Clave primaria del registro PuntosIO.</summary>
     public int IdPunto { get; init; }

@@ -163,19 +163,26 @@ public class ConexionMedidorService : IConexionMedidorService
         return resultado;
     }
 
-    /// <summary>Obtiene de PuntosIO todos los puntos del grupo funcional 1 y solicita sus instantáneos a la DLL.</summary>
-    public async Task<InstantaneosMedidorResult> SolicitarInstantaneosAsync(ConexionMedidorRequest request)
+    /// <summary>
+    /// Obtiene de PuntosIO los puntos activos (Edo = 1) del grupo indicado y solicita sus valores a la DLL.
+    /// El valor del enum <see cref="GrupoLectura"/> es el IdGF de IO_GrupoFuncional.
+    /// </summary>
+    public async Task<LecturaGrupoMedidorResult> SolicitarGrupoAsync(ConexionMedidorRequest request, GrupoLectura grupo)
     {
+        var idGF = (int)grupo;
+        var descripcion = grupo.Descripcion();
         var (idMedidor, medidorComs) = await ObtenerMedidorComsAsync(request.IdMedidor);
 
         _logger.LogInformation(
-            "Buscando puntos instantáneos en PuntosIO: IdMedidor={IdMedidor}, IdGF={IdGF}",
+            "Buscando puntos de {Grupo} en PuntosIO: IdMedidor={IdMedidor}, IdGF={IdGF}",
+            descripcion,
             idMedidor,
-            1);
+            idGF);
 
+        // Solo se piden los puntos activos (Edo = 1) del grupo funcional.
         var puntosBd = await _db.PuntosIO
             .AsNoTracking()
-            .Where(punto => punto.IdGF == 1)
+            .Where(punto => punto.IdGF == idGF && punto.Edo)
             .OrderBy(punto => punto.DirCCEC)
             .Select(punto => new
             {
@@ -189,9 +196,11 @@ public class ConexionMedidorService : IConexionMedidorService
         if (puntosBd.Count == 0)
         {
             _logger.LogWarning(
-                "No hay puntos PuntosIO con IdGF=1; no se llamará SolInstT. IdMedidor={IdMedidor}",
+                "No hay puntos PuntosIO activos con IdGF={IdGF} ({Grupo}); no se llamará a la DLL. IdMedidor={IdMedidor}",
+                idGF,
+                descripcion,
                 idMedidor);
-            throw new InvalidOperationException("No hay puntos configurados con IdGF = 1 para solicitar instantáneos.");
+            throw new InvalidOperationException($"No hay puntos activos configurados con IdGF = {idGF} para solicitar {descripcion}.");
         }
 
         var puntosInvalidos = puntosBd
@@ -202,10 +211,12 @@ public class ConexionMedidorService : IConexionMedidorService
         if (puntosInvalidos.Count > 0)
         {
             _logger.LogError(
-                "Hay puntos instantáneos con direcciones fuera del rango ushort de la DLL. IdMedidor={IdMedidor}, IdPuntos={IdPuntos}",
+                "Hay puntos de {Grupo} con direcciones fuera del rango ushort de la DLL. IdMedidor={IdMedidor}, IdGF={IdGF}, IdPuntos={IdPuntos}",
+                descripcion,
                 idMedidor,
+                idGF,
                 string.Join(",", puntosInvalidos.Select(punto => punto.IdPunto)));
-            throw new InvalidOperationException("Uno o más puntos con IdGF = 1 tienen direcciones fuera del rango que admite la DLL.");
+            throw new InvalidOperationException($"Uno o más puntos con IdGF = {idGF} tienen direcciones fuera del rango que admite la DLL.");
         }
 
         var puntosDll = puntosBd
@@ -218,18 +229,19 @@ public class ConexionMedidorService : IConexionMedidorService
             .ToList();
 
         _logger.LogInformation(
-            "Se cargarán puntos instantáneos desde PuntosIO: IdMedidor={IdMedidor}, CantidadPuntos={CantidadPuntos}, IdGF={IdGF}, UsarRF={UsarRF}",
+            "Se cargarán puntos de {Grupo} desde PuntosIO: IdMedidor={IdMedidor}, CantidadPuntos={CantidadPuntos}, IdGF={IdGF}, UsarRF={UsarRF}",
+            descripcion,
             idMedidor,
             puntosDll.Count,
-            1,
+            idGF,
             _comsClient.UsarRF);
 
         var cronometro = Stopwatch.StartNew();
-        var (conectado, lecturaExitosa) = await _comsClient.ConectarYSolicitarInstantaneosAsync(medidorComs, puntosDll);
+        var (conectado, lecturaExitosa) = await _comsClient.ConectarYSolicitarGrupoAsync(medidorComs, puntosDll, grupo);
         cronometro.Stop();
 
         var puntosResultado = puntosBd
-            .Select((punto, indice) => new InstantaneoPuntoResult
+            .Select((punto, indice) => new LecturaPuntoResult
             {
                 IdPunto = punto.IdPunto,
                 Tag = punto.Tag,
@@ -240,23 +252,26 @@ public class ConexionMedidorService : IConexionMedidorService
             .ToList();
 
         _logger.LogInformation(
-            "Terminó la solicitud de instantáneos: IdMedidor={IdMedidor}, Conectado={Conectado}, LecturaExitosa={LecturaExitosa}, CantidadPuntos={CantidadPuntos}, DuracionMs={DuracionMs}",
+            "Terminó la solicitud de {Grupo}: IdMedidor={IdMedidor}, IdGF={IdGF}, Conectado={Conectado}, LecturaExitosa={LecturaExitosa}, CantidadPuntos={CantidadPuntos}, DuracionMs={DuracionMs}",
+            descripcion,
             idMedidor,
+            idGF,
             conectado,
             lecturaExitosa,
             puntosResultado.Count,
             cronometro.ElapsedMilliseconds);
 
-        return new InstantaneosMedidorResult
+        return new LecturaGrupoMedidorResult
         {
             IdMedidor = idMedidor,
+            IdGF = idGF,
             Conectado = conectado,
             LecturaExitosa = lecturaExitosa,
             Mensaje = !conectado
                 ? "No se pudo conectar con el medidor."
                 : lecturaExitosa
-                    ? "Se solicitaron los valores instantáneos."
-                    : "El medidor conectó, pero no se confirmó la lectura de instantáneos.",
+                    ? $"Se solicitaron los puntos de {descripcion}."
+                    : $"El medidor conectó, pero no se confirmó la lectura de {descripcion}.",
             Puntos = puntosResultado
         };
     }

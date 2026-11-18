@@ -18,8 +18,12 @@ public interface IConexionMedidorService
     /// <returns>Resultados independientes de conexión y sincronización.</returns>
     Task<SincronizacionMedidorResult> SincronizarAsync(ConexionMedidorRequest request);
 
-    /// <summary>Conecta con el medidor y solicita todos los puntos instantáneos con IdGF = 1.</summary>
+    /// <summary>
+    /// Conecta con el medidor y solicita los puntos activos (Edo = 1) del grupo indicado;
+    /// el valor del enum es el IdGF que se filtra en PuntosIO.
+    /// </summary>
     /// <param name="request">Identificador del medidor que se consultará.</param>
+    /// <param name="grupo">Grupo funcional que se leerá.</param>
     /// <returns>Estado de conexión y los puntos con los valores obtenidos.</returns>
-    Task<InstantaneosMedidorResult> SolicitarInstantaneosAsync(ConexionMedidorRequest request);
+    Task<LecturaGrupoMedidorResult> SolicitarGrupoAsync(ConexionMedidorRequest request, GrupoLectura grupo);
 }
