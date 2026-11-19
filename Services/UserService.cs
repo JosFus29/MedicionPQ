@@ -54,20 +54,34 @@ public class UserService : IUserService
             .ToListAsync();
     }
 
-    /// <summary>Crea una cuenta pública con rol Usuario sin aceptar un rol desde la solicitud.</summary>
-    public Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> RegisterAsync(
+    /// <summary>
+    /// Crea una cuenta pública con rol Usuario sin aceptar un rol desde la solicitud.
+    /// La cuenta queda inactiva (<c>edo = false</c>): no puede iniciar sesión hasta que un
+    /// Administrador o SuperAdministrador la apruebe activándola.
+    /// </summary>
+    public async Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> RegisterAsync(
         string correo,
         string contrasena,
-        string nombreUsuario) =>
-        CreateUserAsync(correo, contrasena, nombreUsuario, Usuario.TipoRol.Usuario);
+        string nombreUsuario)
+    {
+        var (exito, mensaje, usuario) = await CreateUserAsync(correo, contrasena, nombreUsuario, Usuario.TipoRol.Usuario, activo: false);
+        return exito
+            ? (true, MensajeRegistroPendiente, usuario)
+            : (false, mensaje, null);
+    }
+
+    /// <summary>Mensaje que recibe quien se registra: su cuenta espera la aprobación de un administrador.</summary>
+    public const string MensajeRegistroPendiente =
+        "Cuenta creada. Un administrador debe aprobarla antes de que puedas iniciar sesión.";
 
     /// <summary>Valida los datos, evita correos duplicados, aplica hash y guarda una nueva cuenta.</summary>
     /// <param name="correo">Correo único de la cuenta.</param>
     /// <param name="contrasena">Contraseña en texto plano de al menos ocho caracteres.</param>
     /// <param name="nombreUsuario">Nombre visible de la cuenta.</param>
     /// <param name="rol">Rol asignado al usuario.</param>
+    /// <param name="activo">Estado inicial de la cuenta; <c>false</c> la deja pendiente de aprobación.</param>
     /// <returns>Resultado de la operación, mensaje y DTO creado si tiene éxito.</returns>
-    public async Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> CreateUserAsync(string correo, string contrasena, string nombreUsuario, Usuario.TipoRol rol)
+    public async Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> CreateUserAsync(string correo, string contrasena, string nombreUsuario, Usuario.TipoRol rol, bool activo = true)
     {
         if (string.IsNullOrWhiteSpace(correo) || string.IsNullOrWhiteSpace(contrasena) || string.IsNullOrWhiteSpace(nombreUsuario))
             return (false, "Datos incompletos.", null);
@@ -88,7 +102,7 @@ public class UserService : IUserService
             contrasena = _passwordService.HashPassword(contrasena),
             nombreUsuario = nombreUsuario,
             rol = rol,
-            edo = true,
+            edo = activo,
             tiempoSesion = 60
         };
 
