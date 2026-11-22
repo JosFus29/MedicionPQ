@@ -24,8 +24,12 @@ public class CodigoVerificacionContrasenaTests
     {
         public List<(string Destinatario, string Cuerpo)> Enviados { get; } = new();
 
+        /// <summary>Si es true, simula que el servidor de correo rechaza el envío.</summary>
+        public bool Fallar { get; set; }
+
         public Task EnviarAsync(string destinatario, string asunto, string cuerpo)
         {
+            if (Fallar) throw new InvalidOperationException("Servidor de correo no disponible.");
             Enviados.Add((destinatario, cuerpo));
             return Task.CompletedTask;
         }
@@ -271,5 +275,34 @@ public class CodigoVerificacionContrasenaTests
 
         Assert.Single(email.Enviados);
         Assert.Single(db.RecuperacionesContrasena);
+    }
+
+    [Fact]
+    public async Task SiElCorreoFalla_ElCodigoSeInvalidaYSePuedePedirOtroDeInmediato()
+    {
+        var db = CrearDb();
+        var pwd = new PasswordService();
+        var email = new EmailFalso { Fallar = true };
+        await CrearUsuarioAsync(db, pwd);
+        var servicio = CrearServicio(db, pwd, email);
+
+        await servicio.SolicitarCodigoAsync(Correo);
+        Assert.True(db.RecuperacionesContrasena.Single().usado);
+
+        email.Fallar = false;
+        await servicio.SolicitarCodigoAsync(Correo);
+
+        Assert.Single(email.Enviados);
+        var (exito, _) = await servicio.RestablecerAsync(Correo, email.UltimoCodigo(), Nueva);
+        Assert.True(exito);
+    }
+
+    [Theory]
+    [InlineData("abcd efgh ijkl mnop", "abcdefghijklmnop")]
+    [InlineData(" abcdefghijklmnop ", "abcdefghijklmnop")]
+    [InlineData(null, "")]
+    public void LimpiarContrasena_QuitaLosEspaciosDeLaContrasenaDeAplicacion(string? entrada, string esperado)
+    {
+        Assert.Equal(esperado, EmailService.LimpiarContrasena(entrada));
     }
 }

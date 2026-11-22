@@ -74,7 +74,7 @@ public class RecuperacionContrasenaService : IRecuperacionContrasenaService
         // RandomNumberGenerator es criptográficamente seguro (Random no lo es).
         var codigo = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
 
-        _context.RecuperacionesContrasena.Add(new RecuperacionContrasena
+        var registro = new RecuperacionContrasena
         {
             idUsuario = usuario.idUsuario,
             codigoHash = _passwordService.HashPassword(codigo),
@@ -82,7 +82,8 @@ public class RecuperacionContrasenaService : IRecuperacionContrasenaService
             intentos = 0,
             usado = false,
             fechaCreacion = ahora
-        });
+        };
+        _context.RecuperacionesContrasena.Add(registro);
         await _context.SaveChangesAsync();
 
         try
@@ -99,7 +100,12 @@ public class RecuperacionContrasenaService : IRecuperacionContrasenaService
         catch (Exception ex)
         {
             // No se lanza la excepción: la respuesta al cliente debe ser la misma exista o no el correo.
-            _logger.LogError(ex, "No se pudo enviar el código de verificación a {Correo}", correoNormalizado);
+            // El detalle técnico ya lo registró EmailService; aquí solo se deja el motivo.
+            _logger.LogError("No se pudo enviar el código de verificación a {Correo}: {Motivo}", correoNormalizado, ex.Message);
+
+            // El código nunca llegó: se invalida para que el usuario pueda pedir otro sin esperar.
+            registro.usado = true;
+            await _context.SaveChangesAsync();
         }
     }
 
