@@ -101,6 +101,10 @@ builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
 // Registra servicios de negocio con ciclo de vida por solicitud HTTP.
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
+// Envío de correos por SMTP (sección Email); en desarrollo, sin Email:Host configurado, los muestra solo en la consola.
+builder.Services.AddScoped<IEmailService, EmailService>();
+// Cambio de contraseña con código de verificación de 6 dígitos enviado por correo (único camino para cambiarla).
+builder.Services.AddScoped<IRecuperacionContrasenaService, RecuperacionContrasenaService>();
 // Registra las operaciones de consulta, alta y actualización de controladores RF.
 builder.Services.AddScoped<IControladorRFService, ControladorRFService>();
 // Servicio para validar la relación con ControladorRF y guardar medidores QP.

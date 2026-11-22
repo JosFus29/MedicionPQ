@@ -54,20 +54,34 @@ public class UserService : IUserService
             .ToListAsync();
     }
 
-    /// <summary>Crea una cuenta pública con rol Usuario sin aceptar un rol desde la solicitud.</summary>
-    public Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> RegisterAsync(
+    /// <summary>
+    /// Crea una cuenta pública con rol Usuario sin aceptar un rol desde la solicitud.
+    /// La cuenta queda inactiva (<c>edo = false</c>): no puede iniciar sesión hasta que un
+    /// Administrador o SuperAdministrador la apruebe activándola.
+    /// </summary>
+    public async Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> RegisterAsync(
         string correo,
         string contrasena,
-        string nombreUsuario) =>
-        CreateUserAsync(correo, contrasena, nombreUsuario, Usuario.TipoRol.Usuario);
+        string nombreUsuario)
+    {
+        var (exito, mensaje, usuario) = await CreateUserAsync(correo, contrasena, nombreUsuario, Usuario.TipoRol.Usuario, activo: false);
+        return exito
+            ? (true, MensajeRegistroPendiente, usuario)
+            : (false, mensaje, null);
+    }
+
+    /// <summary>Mensaje que recibe quien se registra: su cuenta espera la aprobación de un administrador.</summary>
+    public const string MensajeRegistroPendiente =
+        "Cuenta creada. Un administrador debe aprobarla antes de que puedas iniciar sesión.";
 
     /// <summary>Valida los datos, evita correos duplicados, aplica hash y guarda una nueva cuenta.</summary>
     /// <param name="correo">Correo único de la cuenta.</param>
     /// <param name="contrasena">Contraseña en texto plano de al menos ocho caracteres.</param>
     /// <param name="nombreUsuario">Nombre visible de la cuenta.</param>
     /// <param name="rol">Rol asignado al usuario.</param>
+    /// <param name="activo">Estado inicial de la cuenta; <c>false</c> la deja pendiente de aprobación.</param>
     /// <returns>Resultado de la operación, mensaje y DTO creado si tiene éxito.</returns>
-    public async Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> CreateUserAsync(string correo, string contrasena, string nombreUsuario, Usuario.TipoRol rol)
+    public async Task<(bool Exito, string Mensaje, UsuarioDto? Usuario)> CreateUserAsync(string correo, string contrasena, string nombreUsuario, Usuario.TipoRol rol, bool activo = true)
     {
         if (string.IsNullOrWhiteSpace(correo) || string.IsNullOrWhiteSpace(contrasena) || string.IsNullOrWhiteSpace(nombreUsuario))
             return (false, "Datos incompletos.", null);
@@ -88,7 +102,7 @@ public class UserService : IUserService
             contrasena = _passwordService.HashPassword(contrasena),
             nombreUsuario = nombreUsuario,
             rol = rol,
-            edo = true,
+            edo = activo,
             tiempoSesion = 60
         };
 
@@ -152,36 +166,5 @@ public class UserService : IUserService
             edo = usuario.edo,
             tiempoSesion = usuario.tiempoSesion
         });
-    }
-
-    /// <summary>
-    /// Permite que el propio usuario que olvidó su contraseña cree una nueva escribiendo su correo.
-    /// No pide ninguna otra comprobación de identidad, por decisión del proyecto: cualquiera que conozca
-    /// el correo de una cuenta activa puede cambiar su contraseña. Cada uso queda en el log de auditoría.
-    /// No existe una versión para que un administrador cambie la contraseña de otra cuenta.
-    /// </summary>
-    /// <param name="correo">Correo con el que el usuario inicia sesión.</param>
-    /// <param name="nuevaContrasena">Contraseña nueva; debe cumplir <see cref="PasswordPolicy"/>.</param>
-    /// <returns>Resultado de la operación y mensaje.</returns>
-    public async Task<(bool Exito, string Mensaje)> RestablecerContrasenaAsync(string correo, string nuevaContrasena)
-    {
-        if (!PasswordPolicy.IsValid(nuevaContrasena))
-            return (false, PasswordPolicy.ErrorMessage);
-
-        var correoNormalizado = correo?.Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(correoNormalizado))
-            return (false, "El correo es obligatorio.");
-
-        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.correo == correoNormalizado);
-        if (usuario == null || !usuario.edo)
-            return (false, "No existe una cuenta activa con ese correo.");
-
-        if (_passwordService.VerifyPassword(usuario.contrasena, nuevaContrasena))
-            return (false, "La contraseña nueva debe ser distinta de la actual.");
-
-        usuario.contrasena = _passwordService.HashPassword(nuevaContrasena);
-        await _context.SaveChangesAsync();
-
-        return (true, "Contraseña actualizada. Ya puedes iniciar sesión con la nueva.");
     }
 }

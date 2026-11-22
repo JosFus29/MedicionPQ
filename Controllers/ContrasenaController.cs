@@ -6,47 +6,60 @@ using Microsoft.AspNetCore.Mvc;
 namespace MedicionPQ.Controllers;
 
 /// <summary>
-/// Permite que cualquier usuario (Usuario, Administrador o SuperAdministrador) que olvidó su contraseña
-/// cree una nueva por sí mismo, sin iniciar sesión y sin correo de verificación.
-/// Ningún administrador puede cambiar la contraseña de otra cuenta.
+/// Cambio de contraseña con código de verificación por correo. Es el único camino para cambiar una
+/// contraseña y aplica igual a Usuario, Administrador y SuperAdministrador:
+/// <list type="number">
+/// <item><c>POST /api/Contrasena/solicitar-codigo</c>: envía un código de 6 dígitos al correo de la cuenta.</item>
+/// <item><c>POST /api/Contrasena/restablecer</c>: con ese código guarda la contraseña nueva.</item>
+/// </list>
+/// Ningún administrador puede cambiar la contraseña de otra cuenta: el código solo llega al dueño del correo.
 /// </summary>
-/// <remarks>
-/// Riesgo conocido y aceptado por el proyecto: como solo se pide el correo, quien conozca el correo
-/// de una cuenta activa puede cambiar su contraseña. Cada cambio queda en el log de auditoría
-/// ("anonimo modificó Usuario (...): contrasena (modificada)").
-/// </remarks>
 [ApiController]
 [Route("api/[controller]")]
 public class ContrasenaController : ControllerBase
 {
-    private readonly IUserService _userService;
+    private readonly IRecuperacionContrasenaService _recuperacionService;
     private readonly ILogger<ContrasenaController> _logger;
 
-    /// <summary>Recibe el servicio de usuarios y el logger.</summary>
-    public ContrasenaController(IUserService userService, ILogger<ContrasenaController> logger)
+    /// <summary>Recibe el servicio de códigos de verificación y el logger.</summary>
+    public ContrasenaController(IRecuperacionContrasenaService recuperacionService, ILogger<ContrasenaController> logger)
     {
-        _userService = userService;
+        _recuperacionService = recuperacionService;
         _logger = logger;
     }
 
     /// <summary>
-    /// POST /api/Contrasena/restablecer
-    /// Crea una contraseña nueva para la cuenta activa del correo indicado. No requiere sesión.
-    /// La contraseña debe cumplir la política del proyecto (8 a 16 caracteres, mayúscula, minúscula, número y símbolo).
+    /// POST /api/Contrasena/solicitar-codigo
+    /// Envía un código de verificación de 6 dígitos al correo, si pertenece a una cuenta activa. No requiere sesión.
+    /// Siempre responde lo mismo, exista o no el correo, para no revelar qué cuentas hay registradas.
     /// </summary>
-    /// <param name="request">Correo de la cuenta y contraseña nueva.</param>
+    /// <param name="request">Correo de la cuenta.</param>
+    [HttpPost("solicitar-codigo")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SolicitarCodigo([FromBody] SolicitarRecuperacionRequest request)
+    {
+        await _recuperacionService.SolicitarCodigoAsync(request.Correo);
+        return Ok(new { mensaje = $"Si el correo pertenece a una cuenta activa, recibirás un código que vence en {RecuperacionContrasenaService.MinutosVigencia} minutos." });
+    }
+
+    /// <summary>
+    /// POST /api/Contrasena/restablecer
+    /// Guarda la contraseña nueva si el código de verificación es correcto. No requiere sesión.
+    /// La contraseña debe cumplir la política del proyecto (8 a 16 caracteres, mayúscula, minúscula, número y símbolo)
+    /// y ser distinta de la actual.
+    /// </summary>
+    /// <param name="request">Correo, código de 6 dígitos y contraseña nueva.</param>
     [HttpPost("restablecer")]
     [AllowAnonymous]
     public async Task<IActionResult> Restablecer([FromBody] RestablecerContrasenaRequest request)
     {
-        var (exito, mensaje) = await _userService.RestablecerContrasenaAsync(request.Correo, request.NuevaContrasena);
+        var (exito, mensaje) = await _recuperacionService.RestablecerAsync(request.Correo, request.Codigo, request.NuevaContrasena);
         if (!exito)
         {
-            _logger.LogWarning("Restablecimiento de contraseña rechazado para {Correo}: {Motivo}", request.Correo, mensaje);
+            _logger.LogWarning("Cambio de contraseña rechazado para {Correo}: {Motivo}", request.Correo, mensaje);
             return BadRequest(new { mensaje });
         }
 
-        _logger.LogInformation("Contraseña restablecida por el propio usuario: {Correo}", request.Correo);
         return Ok(new { mensaje });
     }
 }
