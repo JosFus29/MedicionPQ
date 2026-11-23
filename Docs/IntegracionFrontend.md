@@ -187,3 +187,39 @@ async function solicitarGrupo(apiUrl, token, ruta, idMedidor) {
 ```
 
 La operación completa (conexión y solicitud) se mantiene serializada para evitar que otra petición use el puerto COM al mismo tiempo. Responde `503` si no se pudo conectar, la DLL no confirmó la lectura, no hay puntos activos con ese `IdGF`, el puerto estuvo ocupado por otra solicitud más de 30 s o alguna dirección no cabe en el `ushort` que requiere la DLL.
+
+## Solicitar armónicos
+
+`POST /api/ConexionMedidor/armonicos` lee los armónicos de las fases A, B y C en una sola conexión. Recibe el mismo cuerpo que las lecturas por grupo:
+
+```json
+{
+  "idMedidor": 1
+}
+```
+
+La API carga de `PuntosIO` los registros activos (`Edo = 1`) con `IdGF = 6`. Debe haber **un punto por fase**; la fase es el `IdGE` del punto (`1` = A, `2` = B, `3` = C). Para cada fase llama a `SolArmonicos(medidor, fase, punto)` de la DLL, que devuelve un arreglo de valores. Si una fase está inactiva (`Edo = 0`) no se pide ni aparece en la respuesta.
+
+```json
+{
+  "idMedidor": 1,
+  "idGF": 6,
+  "conectado": true,
+  "lecturaExitosa": true,
+  "mensaje": "Se solicitaron los armónicos de 3 fase(s).",
+  "fases": [
+    {
+      "fase": 1,
+      "nombreFase": "A",
+      "idPunto": 40,
+      "tag": "Armonicos_A",
+      "dirCCEC": 1200,
+      "dirModbus": 0,
+      "exitosa": true,
+      "valores": [100.0, 2.3, 0.8]
+    }
+  ]
+}
+```
+
+`valores` conserva el orden en que la DLL entrega los armónicos. Si una fase falla, la lectura de las demás continúa; esa fase aparece con `exitosa: false` y `valores: []`, y la respuesta es `503` con `lecturaExitosa: false` y un `mensaje` que indica qué fases fallaron. También responde `503` si no se pudo conectar, no hay puntos activos con `IdGF = 6`, algún punto tiene un `IdGE` distinto de 1, 2 o 3, hay dos puntos activos para la misma fase, el puerto estuvo ocupado más de 30 s o alguna dirección no cabe en el `ushort` de la DLL. Si el medidor no existe responde `404`.

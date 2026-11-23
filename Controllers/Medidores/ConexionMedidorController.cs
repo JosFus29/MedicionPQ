@@ -152,6 +152,48 @@ public class ConexionMedidorController : ControllerBase
         => SolicitarGrupo(request, GrupoLectura.CalidadPotencia);
 
     /// <summary>
+    /// Conecta con el medidor y solicita los armónicos de las fases A, B y C
+    /// (puntos activos con IdGF = 6; la fase es el IdGE del punto; SolArmonicos).
+    /// 200 si conectó y se obtuvieron todas las fases, 404 si el medidor no existe y 503 en cualquier otro caso.
+    /// </summary>
+    [HttpPost("armonicos")]
+    [ProducesResponseType(typeof(LecturaArmonicosResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(LecturaArmonicosResult), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> SolicitarArmonicos([FromBody] ConexionMedidorRequest request)
+    {
+        LecturaArmonicosResult resultado;
+        try
+        {
+            resultado = await _servicio.SolicitarArmonicosAsync(request);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
+        }
+        catch (Exception ex) when (ex is PuertoOcupadoException or InvalidOperationException)
+        {
+            // Puerto ocupado, sin puntos activos, IdGE inválido/duplicado o direcciones incompatibles con la DLL.
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new LecturaArmonicosResult
+            {
+                IdMedidor = request.IdMedidor,
+                IdGF = 6,
+                Conectado = false,
+                LecturaExitosa = false,
+                Mensaje = ex.Message
+            });
+        }
+
+        if (!resultado.Conectado || !resultado.LecturaExitosa)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, resultado);
+
+        return Ok(resultado);
+    }
+
+    /// <summary>
     /// Lógica común de las lecturas por grupo: 200 si conectó y la DLL confirmó la lectura,
     /// 404 si el medidor no existe y 503 en cualquier otro caso (con el cuerpo de resultado).
     /// </summary>

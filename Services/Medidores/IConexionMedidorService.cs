@@ -26,4 +26,12 @@ public interface IConexionMedidorService
     /// <param name="grupo">Grupo funcional que se leerá.</param>
     /// <returns>Estado de conexión y los puntos con los valores obtenidos.</returns>
     Task<LecturaGrupoMedidorResult> SolicitarGrupoAsync(ConexionMedidorRequest request, GrupoLectura grupo);
+
+    /// <summary>
+    /// Conecta con el medidor y solicita los armónicos de las tres fases: toma de PuntosIO los puntos
+    /// activos con IdGF = 6 (uno por fase, identificada por IdGE: 1 = A, 2 = B, 3 = C).
+    /// </summary>
+    /// <param name="request">Identificador del medidor que se consultará.</param>
+    /// <returns>Estado de conexión y los armónicos obtenidos por fase.</returns>
+    Task<LecturaArmonicosResult> SolicitarArmonicosAsync(ConexionMedidorRequest request);
 }

@@ -13,6 +13,9 @@ public class ConexionMedidorService : IConexionMedidorService
 {
     private sealed record PuntoSincronizacionDb(int IdPunto, string Tag, int DirCCEC);
 
+    /// <summary>idGF de los armónicos en IO_GrupoFuncional; la fase de cada punto se toma de su IdGE.</summary>
+    private const int IdGFArmonicos = 6;
+
     private readonly AppDbContext _db;
     private readonly ComsPQClient _comsClient;
     private readonly ILogger<ConexionMedidorService> _logger;
@@ -273,6 +276,148 @@ public class ConexionMedidorService : IConexionMedidorService
                     ? $"Se solicitaron los puntos de {descripcion}."
                     : $"El medidor conectó, pero no se confirmó la lectura de {descripcion}.",
             Puntos = puntosResultado
+        };
+    }
+
+    /// <summary>
+    /// Obtiene de PuntosIO los puntos activos de armónicos (IdGF = 6), uno por fase según su IdGE
+    /// (1 = A, 2 = B, 3 = C), y solicita a la DLL los armónicos de cada fase en una sola conexión.
+    /// </summary>
+    public async Task<LecturaArmonicosResult> SolicitarArmonicosAsync(ConexionMedidorRequest request)
+    {
+        var (idMedidor, medidorComs) = await ObtenerMedidorComsAsync(request.IdMedidor);
+
+        _logger.LogInformation(
+            "Buscando puntos de armónicos en PuntosIO: IdMedidor={IdMedidor}, IdGF={IdGF}",
+            idMedidor,
+            IdGFArmonicos);
+
+        var puntosBd = await _db.PuntosIO
+            .AsNoTracking()
+            .Where(punto => punto.IdGF == IdGFArmonicos && punto.Edo)
+            .OrderBy(punto => punto.IdGE)
+            .Select(punto => new
+            {
+                punto.IdPunto,
+                punto.Tag,
+                punto.IdGE,
+                punto.DirCCEC,
+                punto.DirMB
+            })
+            .ToListAsync();
+
+        if (puntosBd.Count == 0)
+        {
+            _logger.LogWarning(
+                "No hay puntos PuntosIO activos con IdGF={IdGF} (armónicos); no se llamará a la DLL. IdMedidor={IdMedidor}",
+                IdGFArmonicos,
+                idMedidor);
+            throw new InvalidOperationException($"No hay puntos activos configurados con IdGF = {IdGFArmonicos} para solicitar armónicos.");
+        }
+
+        // El IdGE es la fase que se envía a la DLL: solo se admiten 1, 2 y 3, con un punto por fase.
+        var fasesInvalidas = puntosBd.Where(punto => punto.IdGE is < 1 or > 3).ToList();
+        if (fasesInvalidas.Count > 0)
+        {
+            _logger.LogError(
+                "Hay puntos de armónicos con IdGE fuera de 1-3. IdMedidor={IdMedidor}, IdPuntos={IdPuntos}",
+                idMedidor,
+                string.Join(",", fasesInvalidas.Select(punto => punto.IdPunto)));
+            throw new InvalidOperationException(
+                $"Uno o más puntos con IdGF = {IdGFArmonicos} tienen un IdGE distinto de 1, 2 o 3 (fases A, B y C).");
+        }
+
+        var fasesDuplicadas = puntosBd
+            .GroupBy(punto => punto.IdGE)
+            .Where(grupo => grupo.Count() > 1)
+            .Select(grupo => grupo.Key)
+            .ToList();
+        if (fasesDuplicadas.Count > 0)
+        {
+            _logger.LogError(
+                "Hay más de un punto activo de armónicos para la misma fase. IdMedidor={IdMedidor}, IdGE={IdGE}",
+                idMedidor,
+                string.Join(",", fasesDuplicadas));
+            throw new InvalidOperationException(
+                $"Hay más de un punto activo con IdGF = {IdGFArmonicos} para la fase con IdGE = {string.Join(", ", fasesDuplicadas)}.");
+        }
+
+        var puntosInvalidos = puntosBd
+            .Where(punto => punto.DirCCEC is < 0 or > ushort.MaxValue
+                || punto.DirMB is < 0 or > ushort.MaxValue)
+            .ToList();
+        if (puntosInvalidos.Count > 0)
+        {
+            _logger.LogError(
+                "Hay puntos de armónicos con direcciones fuera del rango ushort de la DLL. IdMedidor={IdMedidor}, IdPuntos={IdPuntos}",
+                idMedidor,
+                string.Join(",", puntosInvalidos.Select(punto => punto.IdPunto)));
+            throw new InvalidOperationException($"Uno o más puntos con IdGF = {IdGFArmonicos} tienen direcciones fuera del rango que admite la DLL.");
+        }
+
+        if (puntosBd.Count < 3)
+        {
+            // Una fase con Edo = 0 no se pide; se leen las fases activas restantes.
+            _logger.LogWarning(
+                "No están activas las tres fases de armónicos; solo se pedirán las fases IdGE={Fases}. IdMedidor={IdMedidor}",
+                string.Join(",", puntosBd.Select(punto => punto.IdGE)),
+                idMedidor);
+        }
+
+        var fasesDll = puntosBd
+            .Select(punto => (
+                Fase: (ushort)punto.IdGE,
+                Punto: new PuntoIODtoComs
+                {
+                    Tag = punto.Tag,
+                    DirComsCEC = (ushort)punto.DirCCEC,
+                    DirModbus = (ushort)punto.DirMB
+                }))
+            .ToList();
+
+        var cronometro = Stopwatch.StartNew();
+        var (conectado, valoresPorFase) = await _comsClient.ConectarYSolicitarArmonicosAsync(medidorComs, fasesDll);
+        cronometro.Stop();
+
+        var fasesResultado = puntosBd
+            .Select((punto, indice) => new ArmonicosFaseResult
+            {
+                Fase = punto.IdGE,
+                NombreFase = ArmonicosFaseResult.LetraFase(punto.IdGE),
+                IdPunto = punto.IdPunto,
+                Tag = punto.Tag,
+                DirCCEC = punto.DirCCEC,
+                DirModbus = punto.DirMB,
+                Exitosa = valoresPorFase[indice] is not null,
+                Valores = valoresPorFase[indice] ?? Array.Empty<float>()
+            })
+            .ToList();
+
+        var fasesExitosas = fasesResultado.Count(fase => fase.Exitosa);
+        var lecturaExitosa = conectado && fasesExitosas == fasesResultado.Count;
+
+        _logger.LogInformation(
+            "Terminó la solicitud de armónicos: IdMedidor={IdMedidor}, Conectado={Conectado}, FasesExitosas={FasesExitosas}/{CantidadFases}, DuracionMs={DuracionMs}",
+            idMedidor,
+            conectado,
+            fasesExitosas,
+            fasesResultado.Count,
+            cronometro.ElapsedMilliseconds);
+
+        var fasesFallidas = string.Join(", ", fasesResultado.Where(fase => !fase.Exitosa).Select(fase => fase.NombreFase));
+
+        return new LecturaArmonicosResult
+        {
+            IdMedidor = idMedidor,
+            IdGF = IdGFArmonicos,
+            Conectado = conectado,
+            LecturaExitosa = lecturaExitosa,
+            Mensaje = !conectado
+                ? "No se pudo conectar con el medidor."
+                : lecturaExitosa
+                    ? $"Se solicitaron los armónicos de {fasesResultado.Count} fase(s)."
+                    : $"El medidor conectó, pero no se obtuvieron los armónicos de la(s) fase(s) {fasesFallidas}.",
+            Fases = fasesResultado
         };
     }
 

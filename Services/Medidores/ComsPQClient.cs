@@ -331,6 +331,100 @@ public sealed class ComsPQClient
         }
     }
 
+    /// <summary>
+    /// Conecta con el medidor y, en el mismo turno exclusivo del puerto, llama a SolArmonicos una vez por fase.
+    /// A diferencia de los grupos, SolArmonicos recibe un solo punto y la fase, y devuelve los valores como float[].
+    /// Si una fase falla se registra y se continúa con las demás; su posición en el resultado queda en null.
+    /// </summary>
+    /// <returns>Si conectó y, en el mismo orden que <paramref name="fases"/>, los valores de cada fase (null si falló).</returns>
+    public async Task<(bool Conectado, IReadOnlyList<float[]?> ValoresPorFase)> ConectarYSolicitarArmonicosAsync(
+        MedidorComs medidor,
+        IReadOnlyList<(ushort Fase, PuntoIODtoComs Punto)> fases)
+    {
+        var sinLecturas = fases.Select(_ => (float[]?)null).ToList();
+
+        _logger.LogInformation(
+            "Iniciando conexión y solicitud de armónicos: DirRed={DirRed}, CantidadFases={CantidadFases}, UsarRF={UsarRF}",
+            medidor.DirRed,
+            fases.Count,
+            UsarRF);
+
+        await EsperarTurnoAsync($"Conectar y {nameof(ServicioComs.SolArmonicos)}", medidor);
+        try
+        {
+            bool conectado;
+            try
+            {
+                conectado = await ConectarConLaDllAsync(medidor);
+            }
+            catch (Exception)
+            {
+                // ConectarConLaDllAsync ya registra la excepción de la DLL.
+                return (false, sinLecturas);
+            }
+
+            if (!conectado)
+            {
+                _logger.LogWarning(
+                    "No se llamará SolArmonicos porque Conectar devolvió false. DirRed={DirRed}",
+                    medidor.DirRed);
+                return (false, sinLecturas);
+            }
+
+            var valoresPorFase = new List<float[]?>(fases.Count);
+            foreach (var (fase, punto) in fases)
+            {
+                _logger.LogInformation(
+                    "Llamando a ComsPQService.SolArmonicos. DirRed={DirRed}, Fase={Fase}, PuntoTag={PuntoTag}, DirComsCEC={DirComsCEC}",
+                    medidor.DirRed,
+                    fase,
+                    punto.Tag,
+                    punto.DirComsCEC);
+
+                try
+                {
+                    var valores = await _servicioComs.SolArmonicos(medidor, fase, punto);
+                    if (valores is null || valores.Length == 0)
+                    {
+                        _logger.LogWarning(
+                            "ComsPQService.SolArmonicos no devolvió valores. DirRed={DirRed}, Fase={Fase}, PuntoTag={PuntoTag}",
+                            medidor.DirRed,
+                            fase,
+                            punto.Tag);
+                        valoresPorFase.Add(null);
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "La DLL devolvió armónicos. DirRed={DirRed}, Fase={Fase}, PuntoTag={PuntoTag}, CantidadValores={CantidadValores}",
+                            medidor.DirRed,
+                            fase,
+                            punto.Tag,
+                            valores.Length);
+                        valoresPorFase.Add(valores);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "ComsPQLibrary lanzó una excepción durante SolArmonicos. DirRed={DirRed}, Fase={Fase}, PuntoTag={PuntoTag}, DirComsCEC={DirComsCEC}",
+                        medidor.DirRed,
+                        fase,
+                        punto.Tag,
+                        punto.DirComsCEC);
+                    valoresPorFase.Add(null);
+                }
+            }
+
+            return (true, valoresPorFase);
+        }
+        finally
+        {
+            _semaforo.Release();
+        }
+    }
+
     /// <summary>Llama al método de la DLL que lee el grupo; la DLL escribe cada lectura en PuntoIODto.Valor.</summary>
     private Task<bool> SolicitarALaDll(GrupoLectura grupo, MedidorComs medidor, List<PuntoIODtoComs> puntos) => grupo switch
     {
