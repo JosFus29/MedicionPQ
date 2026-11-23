@@ -152,9 +152,9 @@ public class ConexionMedidorController : ControllerBase
         => SolicitarGrupo(request, GrupoLectura.CalidadPotencia);
 
     /// <summary>
-    /// Conecta con el medidor y solicita los armónicos de las fases A, B y C
-    /// (puntos activos con IdGF = 6; la fase es el IdGE del punto; SolArmonicos).
-    /// 200 si conectó y se obtuvieron todas las fases, 404 si el medidor no existe y 503 en cualquier otro caso.
+    /// Conecta con el medidor y solicita los armónicos de cada punto activo con IdGF = 6
+    /// (la fase es el IdGE del punto; SolArmonicos).
+    /// 200 si conectó y se obtuvieron todos los puntos, 404 si el medidor no existe y 503 en cualquier otro caso.
     /// </summary>
     [HttpPost("armonicos")]
     [ProducesResponseType(typeof(LecturaArmonicosResult), StatusCodes.Status200OK)]
@@ -176,7 +176,7 @@ public class ConexionMedidorController : ControllerBase
         }
         catch (Exception ex) when (ex is PuertoOcupadoException or InvalidOperationException)
         {
-            // Puerto ocupado, sin puntos activos, IdGE inválido/duplicado o direcciones incompatibles con la DLL.
+            // Puerto ocupado, sin puntos activos, IdGE fuera de 1-3 o direcciones incompatibles con la DLL.
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new LecturaArmonicosResult
             {
                 IdMedidor = request.IdMedidor,

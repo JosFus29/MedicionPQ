@@ -190,7 +190,7 @@ La operación completa (conexión y solicitud) se mantiene serializada para evit
 
 ## Solicitar armónicos
 
-`POST /api/ConexionMedidor/armonicos` lee los armónicos de las fases A, B y C en una sola conexión. Recibe el mismo cuerpo que las lecturas por grupo:
+`POST /api/ConexionMedidor/armonicos` lee los armónicos en una sola conexión. Recibe el mismo cuerpo que las lecturas por grupo:
 
 ```json
 {
@@ -198,7 +198,9 @@ La operación completa (conexión y solicitud) se mantiene serializada para evit
 }
 ```
 
-La API carga de `PuntosIO` los registros activos (`Edo = 1`) con `IdGF = 6`. Debe haber **un punto por fase**; la fase es el `IdGE` del punto (`1` = A, `2` = B, `3` = C). Para cada fase llama a `SolArmonicos(medidor, fase, punto)` de la DLL, que devuelve un arreglo de valores. Si una fase está inactiva (`Edo = 0`) no se pide ni aparece en la respuesta.
+La API carga de `PuntosIO` los registros activos (`Edo = 1`) con `IdGF = 6` y envía **cada uno** a la DLL como `PuntoIODto` (`Tag`, `DirCCEC` → `DirComsCEC`, `DirMB` → `DirModbus`), junto con la fase, que es el `IdGE` del punto (`1` = A, `2` = B, `3` = C). Por cada punto llama a `SolArmonicos(medidor, fase, punto)`, que devuelve un arreglo de valores (la DLL pide 30 por punto). Puede haber varios puntos por fase: por ejemplo `ARM_VA` (voltaje) y `ARM_IA` (corriente) con `IdGE = 1`. Los puntos inactivos no se piden ni aparecen en la respuesta.
+
+La DLL decide qué solicitar a partir del `Tag`, que debe ser `ARM_VA`, `ARM_VB`, `ARM_VC`, `ARM_IA`, `ARM_IB` o `ARM_IC`; con otro `Tag` la DLL no lee nada y el punto aparece con `exitosa: false`.
 
 ```json
 {
@@ -206,15 +208,16 @@ La API carga de `PuntosIO` los registros activos (`Edo = 1`) con `IdGF = 6`. Deb
   "idGF": 6,
   "conectado": true,
   "lecturaExitosa": true,
-  "mensaje": "Se solicitaron los armónicos de 3 fase(s).",
-  "fases": [
+  "mensaje": "Se solicitaron los armónicos de 6 punto(s).",
+  "puntos": [
     {
       "fase": 1,
       "nombreFase": "A",
-      "idPunto": 40,
-      "tag": "Armonicos_A",
-      "dirCCEC": 1200,
-      "dirModbus": 0,
+      "tipo": "V",
+      "idPunto": 91,
+      "tag": "ARM_VA",
+      "dirCCEC": 0,
+      "dirModbus": 40127,
       "exitosa": true,
       "valores": [100.0, 2.3, 0.8]
     }
@@ -222,4 +225,4 @@ La API carga de `PuntosIO` los registros activos (`Edo = 1`) con `IdGF = 6`. Deb
 }
 ```
 
-`valores` conserva el orden en que la DLL entrega los armónicos. Si una fase falla, la lectura de las demás continúa; esa fase aparece con `exitosa: false` y `valores: []`, y la respuesta es `503` con `lecturaExitosa: false` y un `mensaje` que indica qué fases fallaron. También responde `503` si no se pudo conectar, no hay puntos activos con `IdGF = 6`, algún punto tiene un `IdGE` distinto de 1, 2 o 3, hay dos puntos activos para la misma fase, el puerto estuvo ocupado más de 30 s o alguna dirección no cabe en el `ushort` de la DLL. Si el medidor no existe responde `404`.
+`puntos` viene ordenado por fase (A, B, C) y, dentro de cada fase, voltaje (`tipo: "V"`) antes que corriente (`tipo: "I"`). `valores` conserva el orden en que la DLL entrega los armónicos. Si un punto falla, la lectura de los demás continúa; ese punto aparece con `exitosa: false` y `valores: []`, y la respuesta es `503` con `lecturaExitosa: false` y un `mensaje` con los `Tag` que fallaron. También responde `503` si no se pudo conectar, no hay puntos activos con `IdGF = 6`, algún punto tiene un `IdGE` distinto de 1, 2 o 3, el puerto estuvo ocupado más de 30 s o alguna dirección no cabe en el `ushort` de la DLL. Si el medidor no existe responde `404`.

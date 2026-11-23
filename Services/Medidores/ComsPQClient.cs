@@ -332,11 +332,11 @@ public sealed class ComsPQClient
     }
 
     /// <summary>
-    /// Conecta con el medidor y, en el mismo turno exclusivo del puerto, llama a SolArmonicos una vez por fase.
+    /// Conecta con el medidor y, en el mismo turno exclusivo del puerto, llama a SolArmonicos una vez por punto (con su fase).
     /// A diferencia de los grupos, SolArmonicos recibe un solo punto y la fase, y devuelve los valores como float[].
-    /// Si una fase falla se registra y se continúa con las demás; su posición en el resultado queda en null.
+    /// Si un punto falla se registra y se continúa con los demás; su posición en el resultado queda en null.
     /// </summary>
-    /// <returns>Si conectó y, en el mismo orden que <paramref name="fases"/>, los valores de cada fase (null si falló).</returns>
+    /// <returns>Si conectó y, en el mismo orden que <paramref name="fases"/>, los valores de cada punto (null si falló).</returns>
     public async Task<(bool Conectado, IReadOnlyList<float[]?> ValoresPorFase)> ConectarYSolicitarArmonicosAsync(
         MedidorComs medidor,
         IReadOnlyList<(ushort Fase, PuntoIODtoComs Punto)> fases)
@@ -344,7 +344,7 @@ public sealed class ComsPQClient
         var sinLecturas = fases.Select(_ => (float[]?)null).ToList();
 
         _logger.LogInformation(
-            "Iniciando conexión y solicitud de armónicos: DirRed={DirRed}, CantidadFases={CantidadFases}, UsarRF={UsarRF}",
+            "Iniciando conexión y solicitud de armónicos: DirRed={DirRed}, CantidadPuntos={CantidadPuntos}, UsarRF={UsarRF}",
             medidor.DirRed,
             fases.Count,
             UsarRF);
