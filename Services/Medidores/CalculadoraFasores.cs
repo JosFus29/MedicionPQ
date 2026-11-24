@@ -17,9 +17,6 @@ namespace MedicionPQ.Services.Medidores;
 /// </summary>
 public static class CalculadoraFasores
 {
-    /// <summary>La DLL entrega el FP multiplicado por 1000 (0.97 llega como 970). V e I ya llegan en volts y amperes.</summary>
-    public const double EscalaFactorPotencia = 1000.0;
-
     /// <summary>Tags de PuntosIO (IdGF = 1) que se leen para cada fase, y el ángulo de su voltaje de referencia.</summary>
     public static readonly IReadOnlyList<(int Fase, string TagPotenciaActiva, string TagPotenciaReactiva, string TagFactorPotencia,
         string TagVoltaje, string TagCorriente, double AnguloVoltaje)> Fases =
@@ -35,8 +32,8 @@ public static class CalculadoraFasores
             .ToArray();
 
     /// <summary>
-    /// Calcula el fasor de una fase. <paramref name="factorPotenciaDll"/> es el valor tal como llega de la DLL
-    /// (escalado por 1000). Si falta P, PR o FP, o P y PR son 0 (sin carga), los campos calculados quedan en null;
+    /// Calcula el fasor de una fase. Todos los valores se usan tal como llegan de la DLL (el FP ya viene entre -1 y 1;
+    /// solo se limita a ese rango por si llega con ruido). Si falta P, PR o FP, o P y PR son 0 (sin carga), los campos calculados quedan en null;
     /// <paramref name="voltaje"/> y <paramref name="corriente"/> se devuelven siempre tal como llegaron.
     /// Cuando P o PR valen exactamente 0 se usa el cuadrante vecino: PR = 0 cuenta como positiva y P = 0 como positiva.
     /// </summary>
@@ -44,14 +41,14 @@ public static class CalculadoraFasores
         int fase,
         double? potenciaActiva,
         double? potenciaReactiva,
-        double? factorPotenciaDll,
+        double? factorPotenciaLeido,
         double? voltaje,
         double? corriente)
     {
         var definicion = Fases.Single(f => f.Fase == fase);
         var nombreFase = ArmonicosPuntoResult.LetraFase(fase);
-        double? factorPotencia = factorPotenciaDll is { } fpDll
-            ? Math.Clamp(fpDll / EscalaFactorPotencia, -1.0, 1.0)
+        double? factorPotencia = factorPotenciaLeido is { } fpLeido
+            ? Math.Clamp(fpLeido, -1.0, 1.0)
             : null;
 
         if (potenciaActiva is not { } p || potenciaReactiva is not { } pr || factorPotencia is not { } fp)

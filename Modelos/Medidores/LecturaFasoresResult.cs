@@ -44,7 +44,7 @@ public sealed class FasorFaseResult
     /// <summary>Corriente de la fase (IA, IB o IC) en amperes, tal como la entrega la DLL. No interviene en el cálculo.</summary>
     public double? Corriente { get; init; }
 
-    /// <summary>Factor de potencia (FPA, FPB o FPC) ya dividido entre 1000 y limitado a -1..1.</summary>
+    /// <summary>Factor de potencia (FPA, FPB o FPC) tal como lo entrega la DLL, limitado a -1..1.</summary>
     public double? FactorPotencia { get; init; }
 
     /// <summary>Cuadrante según los signos de la potencia activa y reactiva: 1, 2, 3 o 4.</summary>

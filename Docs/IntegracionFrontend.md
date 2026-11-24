@@ -251,7 +251,7 @@ Si falta alguno de los 15 puntos, está inactivo o está repetido, la API no lla
 
 El fasor se calcula **solo** con P, PR y FP. El voltaje y la corriente no intervienen en el cálculo: se devuelven para mostrarlos y para dar el largo de las flechas.
 
-1. La DLL entrega el FP multiplicado por 1000 (`-809` = `-0.809`); la API lo divide entre 1000 y lo limita a `-1..1`. V e I ya llegan en volts y amperes y se mandan sin cambios.
+1. La DLL ya entrega todos los valores en su formato final (FP entre `-1` y `1`, V en volts, I en amperes); la API no los escala. El FP solo se limita a `-1..1` por si llega con ruido (por ejemplo `1.0003`).
 2. `anguloFactorPotencia` (phi) = arccos(FP), en grados.
 3. Cuadrante según los signos de potencia activa (P) y reactiva (PR), y `anguloDesfase` (theta_lag):
 
