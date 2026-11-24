@@ -297,6 +297,191 @@ public class CodigoVerificacionContrasenaTests
         Assert.True(exito);
     }
 
+    [Fact]
+    public async Task Verificar_CodigoCorrecto_EsValidoYNoLoMarcaComoUsado()
+    {
+        var db = CrearDb();
+        var pwd = new PasswordService();
+        var email = new EmailFalso();
+        await CrearUsuarioAsync(db, pwd);
+        var servicio = CrearServicio(db, pwd, email);
+        await servicio.SolicitarCodigoAsync(Correo);
+
+        var (exito, mensaje) = await servicio.VerificarCodigoAsync(" Olvidadizo@Example.com ", email.UltimoCodigo());
+
+        Assert.True(exito);
+        Assert.Equal(RecuperacionContrasenaService.MensajeCodigoValido, mensaje);
+        var registro = db.RecuperacionesContrasena.Single();
+        Assert.False(registro.usado);
+        Assert.Equal(0, registro.intentos);
+    }
+
+    [Fact]
+    public async Task Verificar_YDespuesRestablecer_ConElMismoCodigo_Funciona()
+    {
+        var db = CrearDb();
+        var pwd = new PasswordService();
+        var email = new EmailFalso();
+        var usuario = await CrearUsuarioAsync(db, pwd);
+        var servicio = CrearServicio(db, pwd, email);
+        await servicio.SolicitarCodigoAsync(Correo);
+        var codigo = email.UltimoCodigo();
+
+        var (verificado, _) = await servicio.VerificarCodigoAsync(Correo, codigo);
+        var (cambiada, _) = await servicio.RestablecerAsync(Correo, codigo, Nueva);
+
+        Assert.True(verificado);
+        Assert.True(cambiada);
+        var desdeDb = await db.Usuarios.FindAsync(usuario.idUsuario);
+        Assert.True(pwd.VerifyPassword(desdeDb!.contrasena, Nueva));
+        Assert.True(db.RecuperacionesContrasena.Single().usado);
+    }
+
+    [Fact]
+    public async Task Verificar_NoCambiaLaContrasena()
+    {
+        var db = CrearDb();
+        var pwd = new PasswordService();
+        var email = new EmailFalso();
+        var usuario = await CrearUsuarioAsync(db, pwd);
+        var servicio = CrearServicio(db, pwd, email);
+        await servicio.SolicitarCodigoAsync(Correo);
+
+        await servicio.VerificarCodigoAsync(Correo, email.UltimoCodigo());
+
+        var desdeDb = await db.Usuarios.FindAsync(usuario.idUsuario);
+        Assert.True(pwd.VerifyPassword(desdeDb!.contrasena, Anterior));
+    }
+
+    [Fact]
+    public async Task Verificar_CodigoIncorrecto_SumaUnIntentoYDaElMensajeGenerico()
+    {
+        var db = CrearDb();
+        var pwd = new PasswordService();
+        var email = new EmailFalso();
+        await CrearUsuarioAsync(db, pwd);
+        var servicio = CrearServicio(db, pwd, email);
+        await servicio.SolicitarCodigoAsync(Correo);
+
+        var (exito, mensaje) = await servicio.VerificarCodigoAsync(Correo, CodigoIncorrecto(email.UltimoCodigo()));
+
+        Assert.False(exito);
+        Assert.Equal(RecuperacionContrasenaService.MensajeCodigoInvalido, mensaje);
+        Assert.Equal(1, db.RecuperacionesContrasena.Single().intentos);
+    }
+
+    [Fact]
+    public async Task Verificar_CincoIntentosIncorrectos_InvalidanElCodigoTambienParaRestablecer()
+    {
+        var db = CrearDb();
+        var pwd = new PasswordService();
+        var email = new EmailFalso();
+        await CrearUsuarioAsync(db, pwd);
+        var servicio = CrearServicio(db, pwd, email);
+        await servicio.SolicitarCodigoAsync(Correo);
+        var correcto = email.UltimoCodigo();
+
+        for (var i = 0; i < RecuperacionContrasenaService.IntentosMaximos; i++)
+            await servicio.VerificarCodigoAsync(Correo, CodigoIncorrecto(correcto));
+        var (verificado, _) = await servicio.VerificarCodigoAsync(Correo, correcto);
+        var (cambiada, _) = await servicio.RestablecerAsync(Correo, correcto, Nueva);
+
+        Assert.False(verificado);
+        Assert.False(cambiada);
+        Assert.True(db.RecuperacionesContrasena.Single().usado);
+    }
+
+    [Fact]
+    public async Task IntentosIncorrectos_SeSumanEntreVerificarYRestablecer()
+    {
+        var db = CrearDb();
+        var pwd = new PasswordService();
+        var email = new EmailFalso();
+        await CrearUsuarioAsync(db, pwd);
+        var servicio = CrearServicio(db, pwd, email);
+        await servicio.SolicitarCodigoAsync(Correo);
+        var correcto = email.UltimoCodigo();
+        var incorrecto = CodigoIncorrecto(correcto);
+
+        for (var i = 0; i < 3; i++)
+            await servicio.VerificarCodigoAsync(Correo, incorrecto);
+        for (var i = 0; i < 2; i++)
+            await servicio.RestablecerAsync(Correo, incorrecto, Nueva);
+        var (verificado, _) = await servicio.VerificarCodigoAsync(Correo, correcto);
+
+        Assert.False(verificado);
+        Assert.True(db.RecuperacionesContrasena.Single().usado);
+    }
+
+    [Fact]
+    public async Task Verificar_CodigoVencido_Falla()
+    {
+        var db = CrearDb();
+        var pwd = new PasswordService();
+        var email = new EmailFalso();
+        await CrearUsuarioAsync(db, pwd);
+        var servicio = CrearServicio(db, pwd, email);
+        await servicio.SolicitarCodigoAsync(Correo);
+        db.RecuperacionesContrasena.Single().expira = DateTime.UtcNow.AddMinutes(-1);
+        await db.SaveChangesAsync();
+
+        var (exito, mensaje) = await servicio.VerificarCodigoAsync(Correo, email.UltimoCodigo());
+
+        Assert.False(exito);
+        Assert.Equal(RecuperacionContrasenaService.MensajeCodigoInvalido, mensaje);
+    }
+
+    [Fact]
+    public async Task Verificar_CodigoYaUsado_Falla()
+    {
+        var db = CrearDb();
+        var pwd = new PasswordService();
+        var email = new EmailFalso();
+        await CrearUsuarioAsync(db, pwd);
+        var servicio = CrearServicio(db, pwd, email);
+        await servicio.SolicitarCodigoAsync(Correo);
+        var codigo = email.UltimoCodigo();
+        await servicio.RestablecerAsync(Correo, codigo, Nueva);
+
+        var (exito, _) = await servicio.VerificarCodigoAsync(Correo, codigo);
+
+        Assert.False(exito);
+    }
+
+    [Fact]
+    public async Task Verificar_CuentaInactiva_Falla()
+    {
+        var db = CrearDb();
+        var pwd = new PasswordService();
+        var email = new EmailFalso();
+        var usuario = await CrearUsuarioAsync(db, pwd);
+        var servicio = CrearServicio(db, pwd, email);
+        await servicio.SolicitarCodigoAsync(Correo);
+        usuario.edo = false;
+        await db.SaveChangesAsync();
+
+        var (exito, mensaje) = await servicio.VerificarCodigoAsync(Correo, email.UltimoCodigo());
+
+        Assert.False(exito);
+        Assert.Equal(RecuperacionContrasenaService.MensajeCodigoInvalido, mensaje);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("12ab")]
+    public async Task Verificar_SinPedirCodigoOConFormatoRaro_DaElMensajeGenerico(string codigo)
+    {
+        var db = CrearDb();
+        var pwd = new PasswordService();
+        await CrearUsuarioAsync(db, pwd);
+        var servicio = CrearServicio(db, pwd, new EmailFalso());
+
+        var (exito, mensaje) = await servicio.VerificarCodigoAsync(Correo, codigo);
+
+        Assert.False(exito);
+        Assert.Equal(RecuperacionContrasenaService.MensajeCodigoInvalido, mensaje);
+    }
+
     [Theory]
     [InlineData("abcd efgh ijkl mnop", "abcdefghijklmnop")]
     [InlineData(" abcdefghijklmnop ", "abcdefghijklmnop")]

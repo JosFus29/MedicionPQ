@@ -10,7 +10,9 @@ namespace MedicionPQ.Controllers;
 /// contraseña y aplica igual a Usuario, Administrador y SuperAdministrador:
 /// <list type="number">
 /// <item><c>POST /api/Contrasena/solicitar-codigo</c>: envía un código de 6 dígitos al correo de la cuenta.</item>
-/// <item><c>POST /api/Contrasena/restablecer</c>: con ese código guarda la contraseña nueva.</item>
+/// <item><c>POST /api/Contrasena/verificar-codigo</c> (opcional): comprueba el código sin usarlo, para que el
+/// frontend muestre la pantalla de contraseña nueva solo si es correcto.</item>
+/// <item><c>POST /api/Contrasena/restablecer</c>: vuelve a validar el código y guarda la contraseña nueva.</item>
 /// </list>
 /// Ningún administrador puede cambiar la contraseña de otra cuenta: el código solo llega al dueño del correo.
 /// </summary>
@@ -43,8 +45,31 @@ public class ContrasenaController : ControllerBase
     }
 
     /// <summary>
+    /// POST /api/Contrasena/verificar-codigo
+    /// Comprueba que el código de verificación sea correcto, sin cambiar la contraseña ni marcar el código como usado.
+    /// No requiere sesión. Un código incorrecto suma un intento (igual que en restablecer) y al quinto el código se invalida.
+    /// Responde 200 <c>{ "mensaje": "Código válido." }</c> o 400 <c>{ "mensaje": "Código inválido o vencido." }</c>.
+    /// </summary>
+    /// <param name="request">Correo y código de 6 dígitos.</param>
+    [HttpPost("verificar-codigo")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerificarCodigo([FromBody] VerificarCodigoRequest request)
+    {
+        var (exito, mensaje) = await _recuperacionService.VerificarCodigoAsync(request.Correo, request.Codigo);
+        if (!exito)
+        {
+            _logger.LogWarning("Verificación de código rechazada para {Correo}", request.Correo);
+            return BadRequest(new { mensaje });
+        }
+
+        return Ok(new { mensaje });
+    }
+
+    /// <summary>
     /// POST /api/Contrasena/restablecer
     /// Guarda la contraseña nueva si el código de verificación es correcto. No requiere sesión.
+    /// Vuelve a validar el código aunque ya se haya comprobado con verificar-codigo, para que no se pueda
+    /// cambiar la contraseña llamando directo a la API sin el código.
     /// La contraseña debe cumplir la política del proyecto (8 a 16 caracteres, mayúscula, minúscula, número y símbolo)
     /// y ser distinta de la actual.
     /// </summary>
