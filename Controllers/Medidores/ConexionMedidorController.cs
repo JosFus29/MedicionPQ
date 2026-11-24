@@ -194,6 +194,49 @@ public class ConexionMedidorController : ControllerBase
     }
 
     /// <summary>
+    /// Conecta con el medidor, lee en vivo los instantáneos PA, PRA, FPA, PB, PRB, FPB, PC, PRC y FPC (IdGF = 1, SolInstT)
+    /// y devuelve el fasor de corriente de cada fase para graficar el diagrama fasorial.
+    /// 200 si conectó y llegaron los 9 valores, 404 si el medidor no existe y 503 en cualquier otro caso.
+    /// Para actualizar el diagrama cada cierto tiempo, el frontend vuelve a llamar esta ruta al terminar la anterior.
+    /// </summary>
+    [HttpPost("fasores")]
+    [ProducesResponseType(typeof(LecturaFasoresResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(LecturaFasoresResult), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> SolicitarFasores([FromBody] ConexionMedidorRequest request)
+    {
+        LecturaFasoresResult resultado;
+        try
+        {
+            resultado = await _servicio.SolicitarFasoresAsync(request);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
+        }
+        catch (Exception ex) when (ex is PuertoOcupadoException or InvalidOperationException)
+        {
+            // Puerto ocupado, faltan puntos PA..FPC activos o direcciones incompatibles con la DLL.
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new LecturaFasoresResult
+            {
+                IdMedidor = request.IdMedidor,
+                IdGF = (int)GrupoLectura.Instantaneos,
+                Conectado = false,
+                LecturaExitosa = false,
+                Mensaje = ex.Message
+            });
+        }
+
+        if (!resultado.Conectado || !resultado.LecturaExitosa)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, resultado);
+
+        return Ok(resultado);
+    }
+
+    /// <summary>
     /// Lógica común de las lecturas por grupo: 200 si conectó y la DLL confirmó la lectura,
     /// 404 si el medidor no existe y 503 en cualquier otro caso (con el cuerpo de resultado).
     /// </summary>

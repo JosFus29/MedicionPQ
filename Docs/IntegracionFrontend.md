@@ -226,3 +226,127 @@ La DLL decide qué solicitar a partir del `Tag`, que debe ser `ARM_VA`, `ARM_VB`
 ```
 
 `puntos` viene ordenado por fase (A, B, C) y, dentro de cada fase, voltaje (`tipo: "V"`) antes que corriente (`tipo: "I"`). `valores` conserva el orden en que la DLL entrega los armónicos. Si un punto falla, la lectura de los demás continúa; ese punto aparece con `exitosa: false` y `valores: []`, y la respuesta es `503` con `lecturaExitosa: false` y un `mensaje` con los `Tag` que fallaron. También responde `503` si no se pudo conectar, no hay puntos activos con `IdGF = 6`, algún punto tiene un `IdGE` distinto de 1, 2 o 3, el puerto estuvo ocupado más de 30 s o alguna dirección no cabe en el `ushort` de la DLL. Si el medidor no existe responde `404`.
+
+## Solicitar fasores
+
+`POST /api/ConexionMedidor/fasores` lee en vivo los instantáneos de potencia y devuelve el fasor de corriente de cada fase, listo para dibujar el diagrama fasorial. Recibe el mismo cuerpo que las demás lecturas:
+
+```json
+{
+  "idMedidor": 1
+}
+```
+
+La API carga de `PuntosIO` **solo** los puntos activos (`Edo = 1`) con `IdGF = 1` y estos 9 `Tag`, y los pide a la DLL con `SolInstT` en una sola conexión:
+
+| Fase | Potencia activa | Potencia reactiva | Factor de potencia | Voltaje de referencia |
+|---|---|---|---|---|
+| A | `PA` | `PRA` | `FPA` | 0° |
+| B | `PB` | `PRB` | `FPB` | 240° |
+| C | `PC` | `PRC` | `FPC` | 120° |
+
+Si falta alguno de los 9 puntos, está inactivo o está repetido, la API no llama a la DLL y responde `503` con un `mensaje` que dice cuáles.
+
+### Cálculo (por fase)
+
+1. La DLL entrega el FP multiplicado por 1000 (`-809` = `-0.809`); la API lo divide entre 1000 y lo limita a `-1..1`.
+2. `anguloFactorPotencia` (phi) = arccos(FP), en grados.
+3. Cuadrante según los signos de potencia activa (P) y reactiva (PR), y `anguloDesfase` (theta_lag):
+
+   | Cuadrante | Signos | Tipo | theta_lag |
+   |---|---|---|---|
+   | I | P > 0, PR > 0 | Consumo inductivo | phi |
+   | II | P < 0, PR > 0 | Generación capacitiva | phi |
+   | III | P < 0, PR < 0 | Generación inductiva | 360 − phi |
+   | IV | P > 0, PR < 0 | Consumo capacitivo | 360 − phi |
+
+4. `anguloCorriente` = (ángulo del voltaje − theta_lag) mod 360, de 0 a menos de 360. `anguloCorriente180` es el mismo ángulo de −180 a 180.
+5. `potenciaAparente` (S) = raíz(P² + PR²), en las mismas unidades que las potencias. Sirve para dar el largo relativo de cada vector.
+
+Casos especiales: si P y PR valen 0, la fase sale con `tipo: "Sin carga"` y los ángulos en `null` (no hay corriente que dibujar). Si solo uno vale 0, se toma como positivo (por ejemplo, PR = 0 con P > 0 es cuadrante I). `anguloDesfase` puede valer `360` (FP = 1 en cuadrantes III o IV); en el diagrama equivale a 0°.
+
+### Respuesta
+
+```json
+{
+  "idMedidor": 1,
+  "idGF": 1,
+  "conectado": true,
+  "lecturaExitosa": true,
+  "mensaje": "Se calcularon los fasores de las 3 fases.",
+  "fases": [
+    {
+      "fase": 1,
+      "nombreFase": "A",
+      "potenciaActiva": -193.909,
+      "potenciaReactiva": -140.628,
+      "factorPotencia": -0.809,
+      "cuadrante": 3,
+      "tipo": "Generación inductiva",
+      "anguloVoltaje": 0,
+      "anguloFactorPotencia": 144.0,
+      "anguloDesfase": 216.0,
+      "anguloCorriente": 144.0,
+      "anguloCorriente180": 144.0,
+      "potenciaAparente": 239.53
+    }
+  ],
+  "puntos": [
+    { "idPunto": 10, "tag": "PA", "dirCCEC": 0, "dirModbus": 0, "valor": -193.909 }
+  ]
+}
+```
+
+`fases` siempre trae A, B y C en ese orden. `puntos` trae los 9 valores tal como llegaron de la DLL (el FP sin dividir). Los ángulos no se redondean; el frontend decide cuántos decimales mostrar. En el diagrama, el ángulo se mide desde el eje horizontal positivo y crece en sentido antihorario.
+
+Responde `200` si conectó y llegaron los 9 valores, `404` si el medidor no existe y `503` en cualquier otro caso (no conectó, la DLL no confirmó la lectura, algún valor no llegó, faltan puntos en `PuntosIO` o el puerto estuvo ocupado más de 30 s). En un `503` el cuerpo trae el mismo formato con `lecturaExitosa: false` y el `mensaje` a mostrar.
+
+### Actualizar cada cierto tiempo
+
+La API devuelve una lectura por llamada; para que el diagrama se actualice solo, el frontend repite la llamada con el intervalo que elija el usuario. Hay que pedir la siguiente lectura **cuando termine la anterior** más el intervalo (con `setTimeout`, no con `setInterval`): el puerto COM se usa de uno en uno, y si las peticiones se encimaran quedarían en cola hasta fallar con `503`. Se recomienda un intervalo mínimo de 2 segundos.
+
+```js
+// Inicia la lectura periódica de fasores. Devuelve una función para detenerla.
+function iniciarFasores(apiUrl, token, idMedidor, intervaloMs, alRecibir, alFallar) {
+  let activo = true;
+  let temporizador = null;
+  const intervalo = Math.max(intervaloMs, 2000);
+
+  async function leer() {
+    try {
+      const respuesta = await fetch(`${apiUrl}/api/ConexionMedidor/fasores`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ idMedidor })
+      });
+      const resultado = await respuesta.json();
+
+      if (respuesta.ok) {
+        alRecibir(resultado); // resultado.fases -> dibujar IA, IB, IC
+      } else {
+        alFallar(resultado.mensaje ?? `Error HTTP ${respuesta.status}`);
+      }
+    } catch (error) {
+      alFallar(error.message);
+    } finally {
+      // Siempre se programa la siguiente lectura al terminar la actual, aunque haya fallado.
+      if (activo) temporizador = setTimeout(leer, intervalo);
+    }
+  }
+
+  leer();
+
+  return () => {
+    activo = false;
+    clearTimeout(temporizador);
+  };
+}
+
+// Uso: const detener = iniciarFasores(apiUrl, token, 1, 5000, dibujar, mostrarAviso);
+// Al salir de la pantalla o cambiar de medidor: detener();
+```
+
+Si `respuesta.status` es `401`, conviene detener la lectura y pedir que el usuario vuelva a iniciar sesión en lugar de seguir reintentando. Si varios usuarios tienen los fasores abiertos a la vez, las lecturas se turnan el puerto y cada una tarda más.

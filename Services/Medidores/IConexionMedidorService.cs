@@ -34,4 +34,12 @@ public interface IConexionMedidorService
     /// <param name="request">Identificador del medidor que se consultará.</param>
     /// <returns>Estado de conexión y los armónicos obtenidos por punto.</returns>
     Task<LecturaArmonicosResult> SolicitarArmonicosAsync(ConexionMedidorRequest request);
+
+    /// <summary>
+    /// Conecta con el medidor, lee en vivo (SolInstT) los puntos de instantáneos PA, PRA, FPA, PB, PRB, FPB,
+    /// PC, PRC y FPC (IdGF = 1) y calcula el fasor de corriente de cada fase.
+    /// </summary>
+    /// <param name="request">Identificador del medidor que se consultará.</param>
+    /// <returns>Estado de conexión, los fasores de las fases A, B y C y los puntos leídos.</returns>
+    Task<LecturaFasoresResult> SolicitarFasoresAsync(ConexionMedidorRequest request);
 }

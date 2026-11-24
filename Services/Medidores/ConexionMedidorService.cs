@@ -3,6 +3,7 @@ using MedicionPQ.Modelos.Medidores;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
+using System.Globalization;
 using MedidorComs = ComsPQLibrary.Modelos.MedidorPQ;
 using PuntoIODtoComs = ComsPQLibrary.Modelos.PuntoIODto;
 
@@ -170,22 +171,94 @@ public class ConexionMedidorService : IConexionMedidorService
     /// Obtiene de PuntosIO los puntos activos (Edo = 1) del grupo indicado y solicita sus valores a la DLL.
     /// El valor del enum <see cref="GrupoLectura"/> es el IdGF de IO_GrupoFuncional.
     /// </summary>
-    public async Task<LecturaGrupoMedidorResult> SolicitarGrupoAsync(ConexionMedidorRequest request, GrupoLectura grupo)
+    public Task<LecturaGrupoMedidorResult> SolicitarGrupoAsync(ConexionMedidorRequest request, GrupoLectura grupo) =>
+        LeerGrupoAsync(request, grupo, tagsRequeridos: null);
+
+    /// <summary>
+    /// Lee en vivo, con SolInstT, solo los 9 puntos de instantáneos (IdGF = 1) que necesita el diagrama fasorial
+    /// (PA, PRA, FPA, PB, PRB, FPB, PC, PRC, FPC) y calcula con ellos el fasor de corriente de cada fase.
+    /// </summary>
+    public async Task<LecturaFasoresResult> SolicitarFasoresAsync(ConexionMedidorRequest request)
+    {
+        var lectura = await LeerGrupoAsync(request, GrupoLectura.Instantaneos, CalculadoraFasores.TagsRequeridos);
+
+        // Valor numérico de cada Tag; null si la DLL no escribió un valor o no es numérico.
+        var valores = lectura.Puntos
+            .GroupBy(punto => punto.Tag.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => ConvertirADouble(g.First().Valor), StringComparer.OrdinalIgnoreCase);
+
+        var fases = CalculadoraFasores.Fases
+            .Select(f => CalculadoraFasores.Calcular(
+                f.Fase,
+                valores.GetValueOrDefault(f.TagPotenciaActiva),
+                valores.GetValueOrDefault(f.TagPotenciaReactiva),
+                valores.GetValueOrDefault(f.TagFactorPotencia)))
+            .ToList();
+
+        var tagsSinValor = CalculadoraFasores.TagsRequeridos
+            .Where(tag => valores.GetValueOrDefault(tag) is null)
+            .ToList();
+
+        var lecturaExitosa = lectura.Conectado && lectura.LecturaExitosa && tagsSinValor.Count == 0;
+
+        if (lectura.Conectado && lectura.LecturaExitosa && tagsSinValor.Count > 0)
+        {
+            _logger.LogWarning(
+                "La DLL confirmó la lectura de instantáneos, pero faltan valores para los fasores: IdMedidor={IdMedidor}, Tags={Tags}",
+                lectura.IdMedidor,
+                string.Join(",", tagsSinValor));
+        }
+
+        return new LecturaFasoresResult
+        {
+            IdMedidor = lectura.IdMedidor,
+            IdGF = lectura.IdGF,
+            Conectado = lectura.Conectado,
+            LecturaExitosa = lecturaExitosa,
+            Mensaje = !lectura.Conectado
+                ? "No se pudo conectar con el medidor."
+                : !lectura.LecturaExitosa
+                    ? "El medidor conectó, pero no se confirmó la lectura de los instantáneos."
+                    : tagsSinValor.Count > 0
+                        ? $"El medidor no devolvió un valor numérico para: {string.Join(", ", tagsSinValor)}."
+                        : "Se calcularon los fasores de las 3 fases.",
+            Fases = fases,
+            Puntos = lectura.Puntos
+        };
+    }
+
+    /// <summary>
+    /// Carga de PuntosIO los puntos activos del grupo y los solicita a la DLL. Si se indican
+    /// <paramref name="tagsRequeridos"/>, solo se leen esos Tags y deben existir todos (activos y sin repetir).
+    /// </summary>
+    private async Task<LecturaGrupoMedidorResult> LeerGrupoAsync(
+        ConexionMedidorRequest request,
+        GrupoLectura grupo,
+        IReadOnlyList<string>? tagsRequeridos)
     {
         var idGF = (int)grupo;
         var descripcion = grupo.Descripcion();
         var (idMedidor, medidorComs) = await ObtenerMedidorComsAsync(request.IdMedidor);
 
         _logger.LogInformation(
-            "Buscando puntos de {Grupo} en PuntosIO: IdMedidor={IdMedidor}, IdGF={IdGF}",
+            "Buscando puntos de {Grupo} en PuntosIO: IdMedidor={IdMedidor}, IdGF={IdGF}, Tags={Tags}",
             descripcion,
             idMedidor,
-            idGF);
+            idGF,
+            tagsRequeridos is null ? "(todos)" : string.Join(",", tagsRequeridos));
 
         // Solo se piden los puntos activos (Edo = 1) del grupo funcional.
-        var puntosBd = await _db.PuntosIO
+        var consulta = _db.PuntosIO
             .AsNoTracking()
-            .Where(punto => punto.IdGF == idGF && punto.Edo)
+            .Where(punto => punto.IdGF == idGF && punto.Edo);
+
+        if (tagsRequeridos is not null)
+        {
+            var tags = tagsRequeridos.ToArray();
+            consulta = consulta.Where(punto => tags.Contains(punto.Tag));
+        }
+
+        var puntosBd = await consulta
             .OrderBy(punto => punto.DirCCEC)
             .Select(punto => new
             {
@@ -204,6 +277,38 @@ public class ConexionMedidorService : IConexionMedidorService
                 descripcion,
                 idMedidor);
             throw new InvalidOperationException($"No hay puntos activos configurados con IdGF = {idGF} para solicitar {descripcion}.");
+        }
+
+        if (tagsRequeridos is not null)
+        {
+            var faltantes = tagsRequeridos
+                .Where(tag => !puntosBd.Any(punto => string.Equals(punto.Tag.Trim(), tag, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+            var repetidos = puntosBd
+                .GroupBy(punto => punto.Tag.Trim(), StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (faltantes.Count > 0 || repetidos.Count > 0)
+            {
+                _logger.LogWarning(
+                    "Puntos de {Grupo} incompletos para la lectura; no se llamará a la DLL. IdMedidor={IdMedidor}, IdGF={IdGF}, Faltantes={Faltantes}, Repetidos={Repetidos}",
+                    descripcion,
+                    idMedidor,
+                    idGF,
+                    string.Join(",", faltantes),
+                    string.Join(",", repetidos));
+
+                var problemas = new List<string>();
+                if (faltantes.Count > 0)
+                    problemas.Add($"faltan o están inactivos: {string.Join(", ", faltantes)}");
+                if (repetidos.Count > 0)
+                    problemas.Add($"están repetidos: {string.Join(", ", repetidos)}");
+
+                throw new InvalidOperationException(
+                    $"Los puntos con IdGF = {idGF} necesarios para la lectura no están bien configurados en PuntosIO ({string.Join("; ", problemas)}).");
+            }
         }
 
         var puntosInvalidos = puntosBd
@@ -405,6 +510,25 @@ public class ConexionMedidorService : IConexionMedidorService
                     : $"El medidor conectó, pero no se obtuvieron los armónicos de: {puntosFallidos}.",
             Puntos = puntosResultado
         };
+    }
+
+    /// <summary>Convierte el valor que escribió la DLL en double; null si no hay valor o no es un número finito.</summary>
+    private static double? ConvertirADouble(object? valor)
+    {
+        double? numero = valor switch
+        {
+            null => null,
+            string texto => double.TryParse(texto, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : null,
+            IConvertible convertible => ConvertirSeguro(convertible),
+            _ => null
+        };
+        return numero is { } n && double.IsFinite(n) ? n : null;
+
+        static double? ConvertirSeguro(IConvertible convertible)
+        {
+            try { return convertible.ToDouble(CultureInfo.InvariantCulture); }
+            catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException) { return null; }
+        }
     }
 
     /// <summary>
