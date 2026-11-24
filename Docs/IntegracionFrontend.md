@@ -229,7 +229,7 @@ La DLL decide qué solicitar a partir del `Tag`, que debe ser `ARM_VA`, `ARM_VB`
 
 ## Solicitar fasores
 
-`POST /api/ConexionMedidor/fasores` lee en vivo los instantáneos de potencia y devuelve el fasor de corriente de cada fase, listo para dibujar el diagrama fasorial. Recibe el mismo cuerpo que las demás lecturas:
+`POST /api/ConexionMedidor/fasores` lee en vivo los instantáneos y devuelve, por fase, el voltaje, la corriente, el factor de potencia y el fasor de corriente, listos para mostrar y dibujar el diagrama fasorial. Recibe el mismo cuerpo que las demás lecturas:
 
 ```json
 {
@@ -237,19 +237,21 @@ La DLL decide qué solicitar a partir del `Tag`, que debe ser `ARM_VA`, `ARM_VB`
 }
 ```
 
-La API carga de `PuntosIO` **solo** los puntos activos (`Edo = 1`) con `IdGF = 1` y estos 9 `Tag`, y los pide a la DLL con `SolInstT` en una sola conexión:
+La API carga de `PuntosIO` **solo** los puntos activos (`Edo = 1`) con `IdGF = 1` y estos 15 `Tag`, y los pide a la DLL con `SolInstT` en una sola conexión:
 
-| Fase | Potencia activa | Potencia reactiva | Factor de potencia | Voltaje de referencia |
-|---|---|---|---|---|
-| A | `PA` | `PRA` | `FPA` | 0° |
-| B | `PB` | `PRB` | `FPB` | 240° |
-| C | `PC` | `PRC` | `FPC` | 120° |
+| Fase | Potencia activa | Potencia reactiva | Factor de potencia | Voltaje | Corriente | Voltaje de referencia |
+|---|---|---|---|---|---|---|
+| A | `PA` | `PRA` | `FPA` | `VA` | `IA` | 0° |
+| B | `PB` | `PRB` | `FPB` | `VB` | `IB` | 240° |
+| C | `PC` | `PRC` | `FPC` | `VC` | `IC` | 120° |
 
-Si falta alguno de los 9 puntos, está inactivo o está repetido, la API no llama a la DLL y responde `503` con un `mensaje` que dice cuáles.
+Si falta alguno de los 15 puntos, está inactivo o está repetido, la API no llama a la DLL y responde `503` con un `mensaje` que dice cuáles.
 
 ### Cálculo (por fase)
 
-1. La DLL entrega el FP multiplicado por 1000 (`-809` = `-0.809`); la API lo divide entre 1000 y lo limita a `-1..1`.
+El fasor se calcula **solo** con P, PR y FP. El voltaje y la corriente no intervienen en el cálculo: se devuelven para mostrarlos y para dar el largo de las flechas.
+
+1. La DLL entrega el FP multiplicado por 1000 (`-809` = `-0.809`); la API lo divide entre 1000 y lo limita a `-1..1`. V e I ya llegan en volts y amperes y se mandan sin cambios.
 2. `anguloFactorPotencia` (phi) = arccos(FP), en grados.
 3. Cuadrante según los signos de potencia activa (P) y reactiva (PR), y `anguloDesfase` (theta_lag):
 
@@ -261,9 +263,14 @@ Si falta alguno de los 9 puntos, está inactivo o está repetido, la API no llam
    | IV | P > 0, PR < 0 | Consumo capacitivo | 360 − phi |
 
 4. `anguloCorriente` = (ángulo del voltaje − theta_lag) mod 360, de 0 a menos de 360. `anguloCorriente180` es el mismo ángulo de −180 a 180.
-5. `potenciaAparente` (S) = raíz(P² + PR²), en las mismas unidades que las potencias. Sirve para dar el largo relativo de cada vector.
+5. `potenciaAparente` (S) = raíz(P² + PR²), en las mismas unidades que las potencias.
 
-Casos especiales: si P y PR valen 0, la fase sale con `tipo: "Sin carga"` y los ángulos en `null` (no hay corriente que dibujar). Si solo uno vale 0, se toma como positivo (por ejemplo, PR = 0 con P > 0 es cuadrante I). `anguloDesfase` puede valer `360` (FP = 1 en cuadrantes III o IV); en el diagrama equivale a 0°.
+Casos especiales:
+
+- **Sin carga** (P y PR valen 0): `tipo: "Sin carga"`, ángulos de corriente y phi en `null` (no hay corriente que dibujar). `voltaje` y `corriente` sí traen su valor, para dibujar al menos la flecha de voltaje con `anguloVoltaje`.
+- **Valor que no llegó**: ese campo va en `null` en su fase (mostrar "—"). Si el que falta es P, PR o FP, la fase sale con `tipo: "Sin lectura"` y los campos calculados en `null`; si falta V o I, solo ese campo queda en `null` y los ángulos se calculan normalmente.
+- Si solo P o solo PR vale 0, se toma como positivo (por ejemplo, PR = 0 con P > 0 es cuadrante I).
+- `anguloDesfase` puede valer `360` (FP = 1 en cuadrantes III o IV); en el diagrama equivale a 0°.
 
 ### Respuesta
 
@@ -278,8 +285,8 @@ Casos especiales: si P y PR valen 0, la fase sale con `tipo: "Sin carga"` y los 
     {
       "fase": 1,
       "nombreFase": "A",
-      "potenciaActiva": -193.909,
-      "potenciaReactiva": -140.628,
+      "voltaje": 120.5,
+      "corriente": 4.23,
       "factorPotencia": -0.809,
       "cuadrante": 3,
       "tipo": "Generación inductiva",
@@ -290,16 +297,13 @@ Casos especiales: si P y PR valen 0, la fase sale con `tipo: "Sin carga"` y los 
       "anguloCorriente180": 144.0,
       "potenciaAparente": 239.53
     }
-  ],
-  "puntos": [
-    { "idPunto": 10, "tag": "PA", "dirCCEC": 0, "dirModbus": 0, "valor": -193.909 }
   ]
 }
 ```
 
-`fases` siempre trae A, B y C en ese orden. `puntos` trae los 9 valores tal como llegaron de la DLL (el FP sin dividir). Los ángulos no se redondean; el frontend decide cuántos decimales mostrar. En el diagrama, el ángulo se mide desde el eje horizontal positivo y crece en sentido antihorario.
+`fases` siempre trae A, B y C en ese orden. Los ángulos no se redondean; el frontend decide cuántos decimales mostrar. En el diagrama, el ángulo se mide desde el eje horizontal positivo y crece en sentido antihorario: la flecha de voltaje va en `anguloVoltaje` con largo `voltaje`, y la de corriente en `anguloCorriente` con largo `corriente`.
 
-Responde `200` si conectó y llegaron los 9 valores, `404` si el medidor no existe y `503` en cualquier otro caso (no conectó, la DLL no confirmó la lectura, algún valor no llegó, faltan puntos en `PuntosIO` o el puerto estuvo ocupado más de 30 s). En un `503` el cuerpo trae el mismo formato con `lecturaExitosa: false` y el `mensaje` a mostrar.
+Responde `200` si conectó y llegaron los 15 valores, `404` si el medidor no existe y `503` en cualquier otro caso (no conectó, la DLL no confirmó la lectura, algún valor no llegó, faltan puntos en `PuntosIO` o el puerto estuvo ocupado más de 30 s). En un `503` el cuerpo trae el mismo formato, con `lecturaExitosa: false`, el `mensaje` a mostrar y las tres `fases` con `null` en lo que no llegó (si no conectó, todos los valores vienen en `null`). Solo si el `503` ocurre antes de intentar la lectura (faltan puntos en `PuntosIO`, direcciones inválidas o el puerto estaba ocupado) `fases` viene vacío.
 
 ### Actualizar cada cierto tiempo
 
@@ -325,9 +329,10 @@ function iniciarFasores(apiUrl, token, idMedidor, intervaloMs, alRecibir, alFall
       const resultado = await respuesta.json();
 
       if (respuesta.ok) {
-        alRecibir(resultado); // resultado.fases -> dibujar IA, IB, IC
+        alRecibir(resultado); // resultado.fases -> V, I, FP y phi por fase; dibujar VA..VC e IA..IC
       } else {
-        alFallar(resultado.mensaje ?? `Error HTTP ${respuesta.status}`);
+        // En un 503, resultado.fases trae lo que sí llegó y null en lo demás (mostrar "—").
+        alFallar(resultado.mensaje ?? `Error HTTP ${respuesta.status}`, resultado);
       }
     } catch (error) {
       alFallar(error.message);

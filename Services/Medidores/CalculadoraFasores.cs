@@ -12,31 +12,41 @@ namespace MedicionPQ.Services.Medidores;
 /// <item>Ángulo de la corriente = (ángulo del voltaje - theta_lag) mod 360, con VA = 0, VB = 240 y VC = 120.</item>
 /// <item>S = raíz(P² + PR²).</item>
 /// </list>
+/// El voltaje (V) y la corriente (I) de cada fase no intervienen en el cálculo: solo se devuelven para mostrarlos.
 /// No usa base de datos ni la DLL, para poder probarse por separado.
 /// </summary>
 public static class CalculadoraFasores
 {
-    /// <summary>La DLL entrega el FP multiplicado por 1000 (0.97 llega como 970).</summary>
+    /// <summary>La DLL entrega el FP multiplicado por 1000 (0.97 llega como 970). V e I ya llegan en volts y amperes.</summary>
     public const double EscalaFactorPotencia = 1000.0;
 
     /// <summary>Tags de PuntosIO (IdGF = 1) que se leen para cada fase, y el ángulo de su voltaje de referencia.</summary>
-    public static readonly IReadOnlyList<(int Fase, string TagPotenciaActiva, string TagPotenciaReactiva, string TagFactorPotencia, double AnguloVoltaje)> Fases =
+    public static readonly IReadOnlyList<(int Fase, string TagPotenciaActiva, string TagPotenciaReactiva, string TagFactorPotencia,
+        string TagVoltaje, string TagCorriente, double AnguloVoltaje)> Fases =
     [
-        (1, "PA", "PRA", "FPA", 0),
-        (2, "PB", "PRB", "FPB", 240),
-        (3, "PC", "PRC", "FPC", 120)
+        (1, "PA", "PRA", "FPA", "VA", "IA", 0),
+        (2, "PB", "PRB", "FPB", "VB", "IB", 240),
+        (3, "PC", "PRC", "FPC", "VC", "IC", 120)
     ];
 
-    /// <summary>Los 9 Tags necesarios, en orden A, B, C.</summary>
+    /// <summary>Los 15 Tags que se leen, en orden A, B, C (P, PR, FP, V, I de cada fase).</summary>
     public static IReadOnlyList<string> TagsRequeridos { get; } =
-        Fases.SelectMany(f => new[] { f.TagPotenciaActiva, f.TagPotenciaReactiva, f.TagFactorPotencia }).ToArray();
+        Fases.SelectMany(f => new[] { f.TagPotenciaActiva, f.TagPotenciaReactiva, f.TagFactorPotencia, f.TagVoltaje, f.TagCorriente })
+            .ToArray();
 
     /// <summary>
     /// Calcula el fasor de una fase. <paramref name="factorPotenciaDll"/> es el valor tal como llega de la DLL
-    /// (escalado por 1000). Si falta algún valor, o P y PR son 0 (sin carga), los campos calculados quedan en null.
+    /// (escalado por 1000). Si falta P, PR o FP, o P y PR son 0 (sin carga), los campos calculados quedan en null;
+    /// <paramref name="voltaje"/> y <paramref name="corriente"/> se devuelven siempre tal como llegaron.
     /// Cuando P o PR valen exactamente 0 se usa el cuadrante vecino: PR = 0 cuenta como positiva y P = 0 como positiva.
     /// </summary>
-    public static FasorFaseResult Calcular(int fase, double? potenciaActiva, double? potenciaReactiva, double? factorPotenciaDll)
+    public static FasorFaseResult Calcular(
+        int fase,
+        double? potenciaActiva,
+        double? potenciaReactiva,
+        double? factorPotenciaDll,
+        double? voltaje,
+        double? corriente)
     {
         var definicion = Fases.Single(f => f.Fase == fase);
         var nombreFase = ArmonicosPuntoResult.LetraFase(fase);
@@ -50,8 +60,8 @@ public static class CalculadoraFasores
             {
                 Fase = fase,
                 NombreFase = nombreFase,
-                PotenciaActiva = potenciaActiva,
-                PotenciaReactiva = potenciaReactiva,
+                Voltaje = voltaje,
+                Corriente = corriente,
                 FactorPotencia = factorPotencia,
                 Tipo = "Sin lectura",
                 AnguloVoltaje = definicion.AnguloVoltaje
@@ -64,8 +74,8 @@ public static class CalculadoraFasores
             {
                 Fase = fase,
                 NombreFase = nombreFase,
-                PotenciaActiva = p,
-                PotenciaReactiva = pr,
+                Voltaje = voltaje,
+                Corriente = corriente,
                 FactorPotencia = fp,
                 Tipo = "Sin carga",
                 AnguloVoltaje = definicion.AnguloVoltaje,
@@ -97,8 +107,8 @@ public static class CalculadoraFasores
         {
             Fase = fase,
             NombreFase = nombreFase,
-            PotenciaActiva = p,
-            PotenciaReactiva = pr,
+            Voltaje = voltaje,
+            Corriente = corriente,
             FactorPotencia = fp,
             Cuadrante = cuadrante,
             Tipo = tipo,

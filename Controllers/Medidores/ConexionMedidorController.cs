@@ -194,9 +194,9 @@ public class ConexionMedidorController : ControllerBase
     }
 
     /// <summary>
-    /// Conecta con el medidor, lee en vivo los instantáneos PA, PRA, FPA, PB, PRB, FPB, PC, PRC y FPC (IdGF = 1, SolInstT)
-    /// y devuelve el fasor de corriente de cada fase para graficar el diagrama fasorial.
-    /// 200 si conectó y llegaron los 9 valores, 404 si el medidor no existe y 503 en cualquier otro caso.
+    /// Conecta con el medidor, lee en vivo los instantáneos P, PR, FP, V e I de cada fase (IdGF = 1, SolInstT)
+    /// y devuelve por fase el voltaje, la corriente y el fasor de corriente para graficar el diagrama fasorial.
+    /// 200 si conectó y llegaron los 15 valores, 404 si el medidor no existe y 503 en cualquier otro caso.
     /// Para actualizar el diagrama cada cierto tiempo, el frontend vuelve a llamar esta ruta al terminar la anterior.
     /// </summary>
     [HttpPost("fasores")]

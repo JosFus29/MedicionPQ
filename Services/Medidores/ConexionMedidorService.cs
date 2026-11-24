@@ -175,8 +175,9 @@ public class ConexionMedidorService : IConexionMedidorService
         LeerGrupoAsync(request, grupo, tagsRequeridos: null);
 
     /// <summary>
-    /// Lee en vivo, con SolInstT, solo los 9 puntos de instantáneos (IdGF = 1) que necesita el diagrama fasorial
-    /// (PA, PRA, FPA, PB, PRB, FPB, PC, PRC, FPC) y calcula con ellos el fasor de corriente de cada fase.
+    /// Lee en vivo, con SolInstT, solo los 15 puntos de instantáneos (IdGF = 1) que usa el diagrama fasorial:
+    /// PA, PRA, FPA, VA, IA y sus equivalentes de las fases B y C. Con P, PR y FP calcula el fasor de corriente
+    /// de cada fase; V e I solo se devuelven para mostrarlos.
     /// </summary>
     public async Task<LecturaFasoresResult> SolicitarFasoresAsync(ConexionMedidorRequest request)
     {
@@ -192,8 +193,16 @@ public class ConexionMedidorService : IConexionMedidorService
                 f.Fase,
                 valores.GetValueOrDefault(f.TagPotenciaActiva),
                 valores.GetValueOrDefault(f.TagPotenciaReactiva),
-                valores.GetValueOrDefault(f.TagFactorPotencia)))
+                valores.GetValueOrDefault(f.TagFactorPotencia),
+                valores.GetValueOrDefault(f.TagVoltaje),
+                valores.GetValueOrDefault(f.TagCorriente)))
             .ToList();
+
+        // Los valores crudos no van al frontend; quedan en el log por si hay que revisar una lectura.
+        _logger.LogInformation(
+            "Valores leídos para fasores: IdMedidor={IdMedidor}, Valores={Valores}",
+            lectura.IdMedidor,
+            string.Join(", ", lectura.Puntos.Select(punto => $"{punto.Tag}={punto.Valor}")));
 
         var tagsSinValor = CalculadoraFasores.TagsRequeridos
             .Where(tag => valores.GetValueOrDefault(tag) is null)
@@ -222,8 +231,7 @@ public class ConexionMedidorService : IConexionMedidorService
                     : tagsSinValor.Count > 0
                         ? $"El medidor no devolvió un valor numérico para: {string.Join(", ", tagsSinValor)}."
                         : "Se calcularon los fasores de las 3 fases.",
-            Fases = fases,
-            Puntos = lectura.Puntos
+            Fases = fases
         };
     }
 
