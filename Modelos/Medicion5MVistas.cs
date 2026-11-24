@@ -60,14 +60,21 @@ public class Medicion5MEnergiaHoraView
     [NotMapped]
     public DateTime fechaHora => fecha.ToDateTime(new TimeOnly(hora, 0));
 
-    /// <summary>Suma de los valores de 5 minutos de esa hora (kWh o kVARh según la variable).</summary>
-    public double totalHora { get; set; }
+    /// <summary>
+    /// Suma de los valores de 5 minutos de esa hora (kWh o kVARh según la variable).
+    /// Es null si todas las lecturas de la hora están en NULL (hora sin datos); las lecturas NULL no se suman.
+    /// </summary>
+    public double? totalHora { get; set; }
 
     /// <summary>Cantidad de registros de 5 minutos que tuvo la hora (12 = hora completa).</summary>
     public int intervalos { get; set; }
 
-    /// <summary>Suma de totalHora desde la hora 0 hasta esta hora, del mismo día.</summary>
-    public double acumuladoDia { get; set; }
+    /// <summary>
+    /// Suma de totalHora desde la hora 0 hasta esta hora, del mismo día; las horas sin datos no se suman.
+    /// Solo es null si todas las horas desde las 00:00 hasta esta no tienen datos. Para saber si una hora
+    /// tiene datos hay que revisar <see cref="totalHora"/>, no este campo.
+    /// </summary>
+    public double? acumuladoDia { get; set; }
 }
 
 /// <summary>Promedio horario por medidor, variable, fecha y fase.</summary>
