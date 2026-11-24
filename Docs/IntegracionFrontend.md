@@ -239,11 +239,11 @@ La DLL decide qué solicitar a partir del `Tag`, que debe ser `ARM_VA`, `ARM_VB`
 
 La API carga de `PuntosIO` **solo** los puntos activos (`Edo = 1`) con `IdGF = 1` y estos 15 `Tag`, y los pide a la DLL con `SolInstT` en una sola conexión:
 
-| Fase | Potencia activa | Potencia reactiva | Factor de potencia | Voltaje | Corriente | Voltaje de referencia |
+| Fase | Potencia activa | Potencia reactiva | Factor de potencia | Voltaje | Corriente | Voltaje de referencia (horario) |
 |---|---|---|---|---|---|---|
 | A | `PA` | `PRA` | `FPA` | `VA` | `IA` | 0° |
-| B | `PB` | `PRB` | `FPB` | `VB` | `IB` | 240° |
-| C | `PC` | `PRC` | `FPC` | `VC` | `IC` | 120° |
+| B | `PB` | `PRB` | `FPB` | `VB` | `IB` | 120° |
+| C | `PC` | `PRC` | `FPC` | `VC` | `IC` | 240° |
 
 Si falta alguno de los 15 puntos, está inactivo o está repetido, la API no llama a la DLL y responde `503` con un `mensaje` que dice cuáles.
 
@@ -262,7 +262,7 @@ El fasor se calcula **solo** con P, PR y FP. El voltaje y la corriente no interv
    | III | P < 0, PR < 0 | Generación inductiva | 360 − phi |
    | IV | P > 0, PR < 0 | Consumo capacitivo | 360 − phi |
 
-4. `anguloCorriente` = (ángulo del voltaje − theta_lag) mod 360, de 0 a menos de 360. `anguloCorriente180` es el mismo ángulo de −180 a 180.
+4. `anguloCorriente` = (ángulo del voltaje + theta_lag) mod 360, de 0 a menos de 360, **en sentido horario**. `anguloCorriente180` es el mismo ángulo de −180 a 180. Es la fórmula 3 del cálculo original (que mide en sentido antihorario con VB = 240° y VC = 120°) expresada en sentido horario: cada flecha queda exactamente en la misma posición del diagrama.
 5. `potenciaAparente` (S) = raíz(P² + PR²), en las mismas unidades que las potencias.
 
 Casos especiales:
@@ -293,14 +293,14 @@ Casos especiales:
       "anguloVoltaje": 0,
       "anguloFactorPotencia": 144.0,
       "anguloDesfase": 216.0,
-      "anguloCorriente": 144.0,
-      "anguloCorriente180": 144.0,
+      "anguloCorriente": 216.0,
+      "anguloCorriente180": -144.0,
       "potenciaAparente": 239.53
     }
   ]
 }
 ```
 
-`fases` siempre trae A, B y C en ese orden. Los ángulos no se redondean; el frontend decide cuántos decimales mostrar. En el diagrama, el ángulo se mide desde el eje horizontal positivo y crece en sentido antihorario: la flecha de voltaje va en `anguloVoltaje` con largo `voltaje`, y la de corriente en `anguloCorriente` con largo `corriente`.
+`fases` siempre trae A, B y C en ese orden. Los ángulos no se redondean; el frontend decide cuántos decimales mostrar. Todos los ángulos del diagrama (`anguloVoltaje`, `anguloCorriente` y `anguloCorriente180`) se miden desde el eje horizontal positivo (0° a la derecha) y crecen en **sentido horario**: VA a la derecha, VB abajo a la izquierda (120°) y VC arriba a la izquierda (240°). La flecha de voltaje va en `anguloVoltaje` con largo `voltaje`, y la de corriente en `anguloCorriente` con largo `corriente`. En SVG o canvas, donde el eje Y apunta hacia abajo, se dibujan directo sin invertir Y: `x = largo * cos(ángulo)`, `y = largo * sin(ángulo)` (ángulo en radianes).
 
 Responde `200` si conectó y llegaron los 15 valores, `404` si el medidor no existe y `503` en cualquier otro caso (no conectó, la DLL no confirmó la lectura, algún valor no llegó, faltan puntos en `PuntosIO` o el puerto estuvo ocupado más de 30 s). En un `503` el cuerpo trae el mismo formato, con `lecturaExitosa: false`, el `mensaje` a mostrar y las tres `fases` con `null` en lo que no llegó (si no conectó, todos los valores vienen en `null`). Solo si el `503` ocurre antes de intentar la lectura (faltan puntos en `PuntosIO`, direcciones inválidas o el puerto estaba ocupado) `fases` viene vacío.

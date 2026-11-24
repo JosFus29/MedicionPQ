@@ -26,7 +26,8 @@ public sealed class LecturaFasoresResult
 }
 
 /// <summary>
-/// Datos y fasor de corriente de una fase. Los ángulos están en grados. Si la fase no tiene carga
+/// Datos y fasor de corriente de una fase. Los ángulos están en grados; los del diagrama (voltaje y corriente)
+/// se miden en sentido horario desde 0°. Si la fase no tiene carga
 /// (potencia activa y reactiva en 0) o faltó algún valor del cálculo, los campos calculados quedan en null;
 /// voltaje y corriente se mandan siempre que hayan llegado.
 /// </summary>
@@ -53,7 +54,7 @@ public sealed class FasorFaseResult
     /// <summary>Tipo de carga o flujo: "Consumo inductivo", "Generación capacitiva", "Generación inductiva", "Consumo capacitivo", "Sin carga" o "Sin lectura".</summary>
     public string Tipo { get; init; } = string.Empty;
 
-    /// <summary>Ángulo de referencia del voltaje de la fase: A = 0, B = 240, C = 120.</summary>
+    /// <summary>Ángulo de referencia del voltaje de la fase, en sentido horario: A = 0, B = 120, C = 240.</summary>
     public double AnguloVoltaje { get; init; }
 
     /// <summary>phi = arccos(FP), entre 0 y 180.</summary>
@@ -62,10 +63,10 @@ public sealed class FasorFaseResult
     /// <summary>theta_lag: ángulo de retraso de la corriente respecto a su voltaje (puede valer 360).</summary>
     public double? AnguloDesfase { get; init; }
 
-    /// <summary>Ángulo polar de la corriente en el diagrama, de 0 a menos de 360.</summary>
+    /// <summary>Ángulo de la corriente en el diagrama, en sentido horario, de 0 a menos de 360: (anguloVoltaje + theta_lag) mod 360.</summary>
     public double? AnguloCorriente { get; init; }
 
-    /// <summary>El mismo ángulo de la corriente expresado de -180 a 180.</summary>
+    /// <summary>El mismo ángulo de la corriente (sentido horario) expresado de -180 a 180.</summary>
     public double? AnguloCorriente180 { get; init; }
 
     /// <summary>Potencia aparente S = raíz(P² + PR²), en las mismas unidades que las potencias.</summary>

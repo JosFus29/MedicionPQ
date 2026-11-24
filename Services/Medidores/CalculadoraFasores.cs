@@ -9,21 +9,28 @@ namespace MedicionPQ.Services.Medidores;
 /// <item>phi = arccos(FP), en grados.</item>
 /// <item>Cuadrante por signos de P y PR. I (P &gt; 0, PR &gt; 0) y II (P &lt; 0, PR &gt; 0): theta_lag = phi.
 /// III (P &lt; 0, PR &lt; 0) y IV (P &gt; 0, PR &lt; 0): theta_lag = 360 - phi.</item>
-/// <item>Ángulo de la corriente = (ángulo del voltaje - theta_lag) mod 360, con VA = 0, VB = 240 y VC = 120.</item>
+/// <item>Ángulo de la corriente = (ángulo del voltaje + theta_lag) mod 360, con VA = 0, VB = 120 y VC = 240.</item>
 /// <item>S = raíz(P² + PR²).</item>
 /// </list>
+/// Todos los ángulos del diagrama (voltaje y corriente) se miden en SENTIDO HORARIO desde 0°.
+/// La fórmula 3 del prompt original los mide en sentido antihorario (VB = 240, VC = 120 e
+/// I = (V - theta_lag) mod 360); aquí se usa la misma fórmula expresada en sentido horario,
+/// así que cada vector queda exactamente en la misma posición del diagrama.
 /// El voltaje (V) y la corriente (I) de cada fase no intervienen en el cálculo: solo se devuelven para mostrarlos.
 /// No usa base de datos ni la DLL, para poder probarse por separado.
 /// </summary>
 public static class CalculadoraFasores
 {
-    /// <summary>Tags de PuntosIO (IdGF = 1) que se leen para cada fase, y el ángulo de su voltaje de referencia.</summary>
+    /// <summary>
+    /// Tags de PuntosIO (IdGF = 1) que se leen para cada fase, y el ángulo de su voltaje de referencia
+    /// medido en sentido horario (secuencia ABC: VA = 0, VB = 120, VC = 240).
+    /// </summary>
     public static readonly IReadOnlyList<(int Fase, string TagPotenciaActiva, string TagPotenciaReactiva, string TagFactorPotencia,
         string TagVoltaje, string TagCorriente, double AnguloVoltaje)> Fases =
     [
         (1, "PA", "PRA", "FPA", "VA", "IA", 0),
-        (2, "PB", "PRB", "FPB", "VB", "IB", 240),
-        (3, "PC", "PRC", "FPC", "VC", "IC", 120)
+        (2, "PB", "PRB", "FPB", "VB", "IB", 120),
+        (3, "PC", "PRC", "FPC", "VC", "IC", 240)
     ];
 
     /// <summary>Los 15 Tags que se leen, en orden A, B, C (P, PR, FP, V, I de cada fase).</summary>
@@ -93,8 +100,9 @@ public static class CalculadoraFasores
         };
         var thetaLag = cuadrante is 1 or 2 ? phi : 360.0 - phi;
 
-        // FÓRMULA 3: ángulo polar de la corriente, normalizado a 0..360.
-        var anguloCorriente = Normalizar360(definicion.AnguloVoltaje - thetaLag);
+        // FÓRMULA 3 en sentido horario: la corriente se retrasa theta_lag respecto a su voltaje,
+        // y un retraso en sentido horario suma al ángulo. Normalizado a 0..360.
+        var anguloCorriente = Normalizar360(definicion.AnguloVoltaje + thetaLag);
         var anguloCorriente180 = anguloCorriente > 180.0 ? anguloCorriente - 360.0 : anguloCorriente;
 
         // FÓRMULA 4: potencia aparente.
