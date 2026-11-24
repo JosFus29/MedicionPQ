@@ -41,6 +41,12 @@ builder.Host.UseSerilog((context, configuracion) => configuracion
     .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
     // Las excepciones no controladas ya las registra RegistroSolicitudesMiddleware; esto evita duplicarlas.
     .MinimumLevel.Override("Microsoft.AspNetCore.Diagnostics", LogEventLevel.Fatal)
+    // EF Core escribe por su cuenta cada consulta o guardado que falla (en inglés y con la pila completa);
+    // como la API no tiene procesos en segundo plano que usen la base, todo error de base de datos pasa por una
+    // solicitud y RegistroSolicitudesMiddleware lo registra una sola vez, explicado en español.
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Fatal)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Query", LogEventLevel.Fatal)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Update", LogEventLevel.Fatal)
     .WriteTo.Console(outputTemplate: formatoLog)
     // ArchivoLogDiarioSink abre, escribe y cierra el archivo en cada entrada, así el log del día se puede
     // abrir con cualquier programa (Bloc de notas, Excel, VS Code) mientras la API está corriendo.

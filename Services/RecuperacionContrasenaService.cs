@@ -26,6 +26,9 @@ public class RecuperacionContrasenaService : IRecuperacionContrasenaService
     /// <summary>Mensaje único para cualquier código rechazado, para no dar pistas de qué falló.</summary>
     public const string MensajeCodigoInvalido = "Código inválido o vencido.";
 
+    /// <summary>Mensaje cuando el código es correcto en <c>POST /api/Contrasena/verificar-codigo</c>.</summary>
+    public const string MensajeCodigoValido = "Código válido.";
+
     private readonly AppDbContext _context;
     private readonly IPasswordService _passwordService;
     private readonly IEmailService _emailService;
@@ -110,38 +113,28 @@ public class RecuperacionContrasenaService : IRecuperacionContrasenaService
     }
 
     /// <inheritdoc/>
+    public async Task<(bool Exito, string Mensaje)> VerificarCodigoAsync(string correo, string codigo)
+    {
+        var (_, registro) = await ValidarCodigoAsync(correo, codigo);
+        if (registro is null)
+            return (false, MensajeCodigoInvalido);
+
+        // No se marca como usado: el mismo código se vuelve a enviar y validar en RestablecerAsync.
+        _logger.LogInformation("Código de verificación válido (aún no usado) para {Correo}", correo.Trim().ToLowerInvariant());
+        return (true, MensajeCodigoValido);
+    }
+
+    /// <inheritdoc/>
     public async Task<(bool Exito, string Mensaje)> RestablecerAsync(string correo, string codigo, string nuevaContrasena)
     {
         if (!PasswordPolicy.IsValid(nuevaContrasena))
             return (false, PasswordPolicy.ErrorMessage);
 
-        var correoNormalizado = correo?.Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(correoNormalizado) || string.IsNullOrWhiteSpace(codigo))
+        // Se vuelve a validar el código aunque ya se haya verificado antes: así nadie puede cambiar
+        // la contraseña llamando directo a la API sin el código.
+        var (usuario, registro) = await ValidarCodigoAsync(correo, codigo);
+        if (usuario is null || registro is null)
             return (false, MensajeCodigoInvalido);
-
-        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.correo == correoNormalizado);
-        if (usuario is null || !usuario.edo)
-            return (false, MensajeCodigoInvalido);
-
-        var registro = await _context.RecuperacionesContrasena
-            .Where(r => r.idUsuario == usuario.idUsuario && !r.usado)
-            .OrderByDescending(r => r.fechaCreacion)
-            .FirstOrDefaultAsync();
-
-        if (registro is null || registro.expira < DateTime.UtcNow)
-            return (false, MensajeCodigoInvalido);
-
-        if (!_passwordService.VerifyPassword(registro.codigoHash, codigo.Trim()))
-        {
-            registro.intentos++;
-            if (registro.intentos >= IntentosMaximos)
-                registro.usado = true;
-            await _context.SaveChangesAsync();
-
-            _logger.LogWarning("Código de verificación incorrecto para {Correo} (intento {Intento} de {Maximo})",
-                correoNormalizado, registro.intentos, IntentosMaximos);
-            return (false, MensajeCodigoInvalido);
-        }
 
         // El código fue correcto; se revisa hasta aquí para no revelar la contraseña actual a quien no tiene el código.
         if (_passwordService.VerifyPassword(usuario.contrasena, nuevaContrasena))
@@ -151,7 +144,50 @@ public class RecuperacionContrasenaService : IRecuperacionContrasenaService
         registro.usado = true;
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("Contraseña cambiada con código de verificación: {Correo}", correoNormalizado);
+        _logger.LogInformation("Contraseña cambiada con código de verificación: {Correo}", usuario.correo);
         return (true, "Contraseña actualizada. Ya puedes iniciar sesión con la nueva.");
+    }
+
+    /// <summary>
+    /// Validación común de <see cref="VerificarCodigoAsync"/> y <see cref="RestablecerAsync"/>: la cuenta debe estar activa
+    /// y el código debe ser el más reciente, no usado, vigente y coincidir con el hash guardado.
+    /// Si no coincide suma un intento, y al llegar a <see cref="IntentosMaximos"/> invalida el código.
+    /// Un código correcto NO se marca como usado aquí.
+    /// </summary>
+    /// <param name="correo">Correo de la cuenta.</param>
+    /// <param name="codigo">Código de 6 dígitos escrito por el usuario.</param>
+    /// <returns>La cuenta y el registro del código si es válido; <c>(null, null)</c> si no.</returns>
+    private async Task<(Usuario? Usuario, RecuperacionContrasena? Registro)> ValidarCodigoAsync(string? correo, string? codigo)
+    {
+        var correoNormalizado = correo?.Trim().ToLowerInvariant();
+        var codigoLimpio = codigo?.Trim();
+        if (string.IsNullOrWhiteSpace(correoNormalizado) || string.IsNullOrWhiteSpace(codigoLimpio))
+            return (null, null);
+
+        var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.correo == correoNormalizado);
+        if (usuario is null || !usuario.edo)
+            return (null, null);
+
+        var registro = await _context.RecuperacionesContrasena
+            .Where(r => r.idUsuario == usuario.idUsuario && !r.usado)
+            .OrderByDescending(r => r.fechaCreacion)
+            .FirstOrDefaultAsync();
+
+        if (registro is null || registro.expira < DateTime.UtcNow)
+            return (null, null);
+
+        if (!_passwordService.VerifyPassword(registro.codigoHash, codigoLimpio))
+        {
+            registro.intentos++;
+            if (registro.intentos >= IntentosMaximos)
+                registro.usado = true;
+            await _context.SaveChangesAsync();
+
+            _logger.LogWarning("Código de verificación incorrecto para {Correo} (intento {Intento} de {Maximo})",
+                correoNormalizado, registro.intentos, IntentosMaximos);
+            return (null, null);
+        }
+
+        return (usuario, registro);
     }
 }
