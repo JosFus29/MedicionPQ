@@ -4,7 +4,7 @@ using Xunit;
 namespace MedicionPQ.Tests;
 
 /// <summary>
-/// Pruebas del cálculo de fasores: phi = arccos(FP), theta_lag por cuadrante,
+/// Pruebas del cálculo de fasores: phi = arccos(FP), cuadrante por signo del FP y de PR, theta_lag por cuadrante,
 /// ángulo de la corriente = (ángulo del voltaje + theta_lag) mod 360 en sentido horario
 /// (VA = 0, VB = 120, VC = 240) y S = raíz(P² + PR²).
 /// El FP se pasa como lo entrega la DLL (entre -1 y 1). V e I no intervienen en el cálculo.
@@ -120,6 +120,33 @@ public class CalculadoraFasoresTests
         Assert.Equal(120.5, r.Voltaje);
         Assert.Equal(0, r.Corriente);
         Assert.Equal(0, r.AnguloVoltaje);
+    }
+
+    [Theory]
+    [InlineData(0.866, 100, 50, 1, "Consumo inductivo", 30.0)]
+    [InlineData(0.866, 100, -50, 4, "Consumo capacitivo", 330.0)]
+    [InlineData(-0.866, -100, 50, 2, "Generación capacitiva", 150.0)]
+    [InlineData(-0.866, -100, -50, 3, "Generación inductiva", 210.0)]
+    public void FaseA_EjemploDelProcedimiento(double fp, double p, double pr, int cuadrante, string tipo, double anguloIA)
+    {
+        var r = CalculadoraFasores.Calcular(1, p, pr, fp, 120, 1);
+
+        Assert.Equal(cuadrante, r.Cuadrante);
+        Assert.Equal(tipo, r.Tipo);
+        Assert.Equal(anguloIA, r.AnguloCorriente!.Value, Precision);
+    }
+
+    [Theory]
+    [InlineData(0.866, -100, 50, 1, 30.0)]
+    [InlineData(0.866, -100, -50, 4, 330.0)]
+    [InlineData(-0.866, 100, 50, 2, 150.0)]
+    [InlineData(-0.866, 100, -50, 3, 210.0)]
+    public void CuadranteLoDecideElSignoDelFP_NoElDeP(double fp, double p, double pr, int cuadrante, double anguloIA)
+    {
+        var r = CalculadoraFasores.Calcular(1, p, pr, fp, 120, 1);
+
+        Assert.Equal(cuadrante, r.Cuadrante);
+        Assert.Equal(anguloIA, r.AnguloCorriente!.Value, Precision);
     }
 
     [Fact]

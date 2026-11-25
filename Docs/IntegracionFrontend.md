@@ -253,14 +253,14 @@ El fasor se calcula **solo** con P, PR y FP. El voltaje y la corriente no interv
 
 1. La DLL ya entrega todos los valores en su formato final (FP entre `-1` y `1`, V en volts, I en amperes); la API no los escala. El FP solo se limita a `-1..1` por si llega con ruido (por ejemplo `1.0003`).
 2. `anguloFactorPotencia` (phi) = arccos(FP), en grados.
-3. Cuadrante según los signos de potencia activa (P) y reactiva (PR), y `anguloDesfase` (theta_lag):
+3. Cuadrante según el signo del FP (positivo = consumo, negativo = generación) y luego el de la potencia reactiva (PR), y `anguloDesfase` (theta_lag). El signo de P no decide el cuadrante:
 
    | Cuadrante | Signos | Tipo | theta_lag |
    |---|---|---|---|
-   | I | P > 0, PR > 0 | Consumo inductivo | phi |
-   | II | P < 0, PR > 0 | Generación capacitiva | phi |
-   | III | P < 0, PR < 0 | Generación inductiva | 360 − phi |
-   | IV | P > 0, PR < 0 | Consumo capacitivo | 360 − phi |
+   | I | FP > 0, PR > 0 | Consumo inductivo | phi |
+   | II | FP < 0, PR > 0 | Generación capacitiva | phi |
+   | III | FP < 0, PR < 0 | Generación inductiva | 360 − phi |
+   | IV | FP > 0, PR < 0 | Consumo capacitivo | 360 − phi |
 
 4. `anguloCorriente` = (ángulo del voltaje + theta_lag) mod 360, de 0 a menos de 360, **en sentido horario**. `anguloCorriente180` es el mismo ángulo de −180 a 180. Es la fórmula 3 del cálculo original (que mide en sentido antihorario con VB = 240° y VC = 120°) expresada en sentido horario: cada flecha queda exactamente en la misma posición del diagrama.
 5. `potenciaAparente` (S) = raíz(P² + PR²), en las mismas unidades que las potencias.
@@ -269,8 +269,8 @@ Casos especiales:
 
 - **Sin carga** (P y PR valen 0): `tipo: "Sin carga"`, ángulos de corriente y phi en `null` (no hay corriente que dibujar). `voltaje` y `corriente` sí traen su valor, para dibujar al menos la flecha de voltaje con `anguloVoltaje`.
 - **Valor que no llegó**: ese campo va en `null` en su fase (mostrar "—"). Si el que falta es P, PR o FP, la fase sale con `tipo: "Sin lectura"` y los campos calculados en `null`; si falta V o I, solo ese campo queda en `null` y los ángulos se calculan normalmente.
-- Si solo P o solo PR vale 0, se toma como positivo (por ejemplo, PR = 0 con P > 0 es cuadrante I).
-- `anguloDesfase` puede valer `360` (FP = 1 en cuadrantes III o IV); en el diagrama equivale a 0°.
+- Si FP o PR valen 0, se toman como positivos (por ejemplo, PR = 0 con FP > 0 es cuadrante I).
+- `anguloDesfase` puede valer `360` (FP = 1 con PR < 0, cuadrante IV); en el diagrama equivale a 0°.
 
 ### Respuesta
 

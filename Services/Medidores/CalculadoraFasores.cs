@@ -7,8 +7,9 @@ namespace MedicionPQ.Services.Medidores;
 /// y el factor de potencia (FP) que entrega el medidor en los instantáneos:
 /// <list type="number">
 /// <item>phi = arccos(FP), en grados.</item>
-/// <item>Cuadrante por signos de P y PR. I (P &gt; 0, PR &gt; 0) y II (P &lt; 0, PR &gt; 0): theta_lag = phi.
-/// III (P &lt; 0, PR &lt; 0) y IV (P &gt; 0, PR &lt; 0): theta_lag = 360 - phi.</item>
+/// <item>Cuadrante por el signo del FP y luego el de PR. FP positivo (consumo): I si PR &gt; 0, IV si PR &lt; 0.
+/// FP negativo (generación): II si PR &gt; 0, III si PR &lt; 0. El signo de P no decide el cuadrante.
+/// I y II: theta_lag = phi. III y IV: theta_lag = 360 - phi.</item>
 /// <item>Ángulo de la corriente = (ángulo del voltaje + theta_lag) mod 360, con VA = 0, VB = 120 y VC = 240.</item>
 /// <item>S = raíz(P² + PR²).</item>
 /// </list>
@@ -42,7 +43,7 @@ public static class CalculadoraFasores
     /// Calcula el fasor de una fase. Todos los valores se usan tal como llegan de la DLL (el FP ya viene entre -1 y 1;
     /// solo se limita a ese rango por si llega con ruido). Si falta P, PR o FP, o P y PR son 0 (sin carga), los campos calculados quedan en null;
     /// <paramref name="voltaje"/> y <paramref name="corriente"/> se devuelven siempre tal como llegaron.
-    /// Cuando P o PR valen exactamente 0 se usa el cuadrante vecino: PR = 0 cuenta como positiva y P = 0 como positiva.
+    /// Cuando FP o PR valen exactamente 0 se usa el cuadrante vecino: FP = 0 cuenta como positivo y PR = 0 como positiva.
     /// </summary>
     public static FasorFaseResult Calcular(
         int fase,
@@ -90,8 +91,9 @@ public static class CalculadoraFasores
         // FÓRMULA 1: phi = arccos(FP) en grados.
         var phi = Math.Acos(fp) * 180.0 / Math.PI;
 
-        // FÓRMULA 2: cuadrante por signos y ángulo de retraso.
-        var (cuadrante, tipo) = (p >= 0, pr >= 0) switch
+        // FÓRMULA 2: cuadrante por el signo del FP (positivo = consumo, negativo = generación)
+        // y luego por el signo de la reactiva; y ángulo de retraso.
+        var (cuadrante, tipo) = (fp >= 0, pr >= 0) switch
         {
             (true, true) => (1, "Consumo inductivo"),
             (false, true) => (2, "Generación capacitiva"),
