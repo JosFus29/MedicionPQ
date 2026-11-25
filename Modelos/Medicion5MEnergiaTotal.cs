@@ -23,8 +23,12 @@ public enum PeriodoEnergia
 /// <param name="idVar5M">Variable de energía.</param>
 /// <param name="simbolo">Símbolo de la variable (por ejemplo P5M_EE).</param>
 /// <param name="fecha">Día del total.</param>
-/// <param name="total">Suma de las lecturas del día; null si todas están en NULL.</param>
-/// <param name="registros">Lecturas de 5 minutos con valor (no NULL) que entraron en la suma.</param>
+/// <param name="total">
+/// Suma de las lecturas del día. Si todas están en NULL llega como 0 y no como null, porque Entity Framework
+/// traduce <c>Sum</c> como <c>COALESCE(SUM(valor), 0)</c>; por eso <see cref="MedicionPQ.Services.AgrupadorEnergia"/>
+/// se fija en <paramref name="registros"/> para saber si el día tiene datos.
+/// </param>
+/// <param name="registros">Lecturas de 5 minutos con valor (no NULL) que entraron en la suma; 0 = día sin datos.</param>
 public record EnergiaDiaria(int idVar5M, string simbolo, DateOnly fecha, double? total, int registros);
 
 /// <summary>

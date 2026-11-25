@@ -65,6 +65,59 @@ public class AgrupadorEnergiaTests
         Assert.Null(Assert.Single(r).total);
     }
 
+    /// <summary>
+    /// Así llega de verdad un día con todas sus lecturas en NULL: Entity Framework traduce Sum como
+    /// COALESCE(SUM(valor), 0), así que el total viene en 0 con 0 registros. Debe salir null, no 0.
+    /// </summary>
+    [Fact]
+    public void Dia_ConTodasLasLecturasEnNull_ComoLoDevuelveSqlServer_TotalNull()
+    {
+        var dias = new[]
+        {
+            new EnergiaDiaria(EE, "P5M_EE", F("2026-11-19"), 0, 0),
+            new EnergiaDiaria(EE, "P5M_EE", F("2026-11-20"), 0, 0)
+        };
+
+        var r = AgrupadorEnergia.Agrupar(Medidor, dias, F("2026-11-19"), F("2026-11-20"), PeriodoEnergia.Dia);
+
+        Assert.All(r, d => Assert.Null(d.total));
+        Assert.All(r, d => Assert.Equal(0, d.registros));
+    }
+
+    [Fact]
+    public void Dia_ConLecturasQueSumanCero_TotalCero()
+    {
+        var dias = new[] { new EnergiaDiaria(EE, "P5M_EE", F("2026-11-18"), 0, 288) };
+
+        var r = AgrupadorEnergia.Agrupar(Medidor, dias, F("2026-11-18"), F("2026-11-18"), PeriodoEnergia.Dia);
+
+        Assert.Equal(0, Assert.Single(r).total);
+    }
+
+    [Fact]
+    public void Semana_ConDiasEnNull_SoloSumaLosDiasConDatos_YSinNingunoEsNull()
+    {
+        var conUnDia = new[]
+        {
+            new EnergiaDiaria(EE, "P5M_EE", F("2026-11-16"), 0, 0),
+            new EnergiaDiaria(EE, "P5M_EE", F("2026-11-17"), 150, 288),
+            new EnergiaDiaria(EE, "P5M_EE", F("2026-11-18"), 0, 0)
+        };
+        var todosEnNull = new[]
+        {
+            new EnergiaDiaria(EE, "P5M_EE", F("2026-11-16"), 0, 0),
+            new EnergiaDiaria(EE, "P5M_EE", F("2026-11-17"), 0, 0)
+        };
+
+        var semana = Assert.Single(AgrupadorEnergia.Agrupar(Medidor, conUnDia, F("2026-11-16"), F("2026-11-22"), PeriodoEnergia.Semana));
+        var vacia = Assert.Single(AgrupadorEnergia.Agrupar(Medidor, todosEnNull, F("2026-11-16"), F("2026-11-22"), PeriodoEnergia.Semana));
+
+        Assert.Equal(150, semana.total);
+        Assert.Equal(288, semana.registros);
+        Assert.Null(vacia.total);
+        Assert.Equal(0, vacia.registros);
+    }
+
     [Fact]
     public void Semana_DeLunesADomingo()
     {
