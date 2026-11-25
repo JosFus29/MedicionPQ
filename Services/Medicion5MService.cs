@@ -63,4 +63,34 @@ public class Medicion5MService : IMedicion5MService
             .Where(m => m.idMedidor == idMedidor && m.fase == FaseEnergia && m.fecha >= inicio && m.fecha <= fin &&
                 (idVar5M == null || m.idVar5M == idVar5M))
             .OrderBy(m => m.idVar5M).ThenBy(m => m.fecha).ThenBy(m => m.hora).ToListAsync();
+
+    /// <summary>Prefijo de los símbolos de las variables de energía (P5M_EE, P5M_ER, P5M_ERI a P5M_ERIV).</summary>
+    public const string PrefijoEnergia = "P5M_E";
+
+    /// <summary>
+    /// Total de energía por día, semana, mes o año, siempre en fase A.
+    /// SQL Server suma las lecturas de 5 minutos de cada día (y cuenta cuántas tienen valor); después
+    /// <see cref="AgrupadorEnergia"/> junta esos días en el periodo pedido. Así solo viaja un renglón por día
+    /// desde la base y un renglón por periodo hacia el frontend.
+    /// </summary>
+    public async Task<List<Medicion5MEnergiaTotal>> GetEnergiaTotalesAsync(
+        int idMedidor, int? idVar5M, DateOnly inicio, DateOnly fin, PeriodoEnergia periodo)
+    {
+        var dias = await (
+            from m in _context.VistaMedicion5M.AsNoTracking()
+            join v in _context.Vars5M.AsNoTracking() on m.idVar5M equals v.idVar5M
+            where m.idMedidor == idMedidor && m.fase == FaseEnergia && m.fecha >= inicio && m.fecha <= fin &&
+                  v.simbolo.StartsWith(PrefijoEnergia) &&
+                  (idVar5M == null || m.idVar5M == idVar5M)
+            group m by new { m.idVar5M, v.simbolo, m.fecha } into g
+            select new EnergiaDiaria(
+                g.Key.idVar5M,
+                g.Key.simbolo,
+                g.Key.fecha,
+                g.Sum(x => x.valor),
+                g.Count(x => x.valor != null)))
+            .ToListAsync();
+
+        return AgrupadorEnergia.Agrupar(idMedidor, dias, inicio, fin, periodo);
+    }
 }
