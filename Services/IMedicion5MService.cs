@@ -22,4 +22,16 @@ public interface IMedicion5MService
     /// Si <paramref name="idVar5M"/> es null, devuelve todas las variables de energía.
     /// </summary>
     Task<List<Medicion5MEnergiaHoraView>> GetEnergiaHoraAsync(int idMedidor, int? idVar5M, DateOnly inicio, DateOnly fin);
+
+    /// <summary>
+    /// Total de energía por día, semana (lunes a domingo), mes o año en fase A, con las lecturas de 5 minutos
+    /// que entraron en cada total y las que debería tener. Si no se indica variable, trae todas las de energía.
+    /// </summary>
+    /// <param name="idMedidor">Medidor a consultar.</param>
+    /// <param name="idVar5M">Variable de energía, o null para todas.</param>
+    /// <param name="inicio">Primer día del rango.</param>
+    /// <param name="fin">Último día del rango.</param>
+    /// <param name="periodo">Día, semana, mes o año.</param>
+    /// <returns>Un total por variable y periodo; lista vacía si no hay lecturas en el rango.</returns>
+    Task<List<Medicion5MEnergiaTotal>> GetEnergiaTotalesAsync(int idMedidor, int? idVar5M, DateOnly inicio, DateOnly fin, PeriodoEnergia periodo);
 }

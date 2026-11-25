@@ -89,6 +89,67 @@ public class Medicion5MController : ControllerBase
         return Results(await _service.GetEnergiaHoraAsync(idMedidor, idVar5M, fechaInicio, fechaFin));
     }
 
+    /// <summary>
+    /// GET /api/Medicion5M/energia-dia
+    /// Total de energía por día (suma de sus lecturas de 5 minutos), solo variables de energía y fase A.
+    /// Cada total trae <c>registros</c> y <c>registrosEsperados</c> (288 por día) para saber si está completo.
+    /// </summary>
+    /// <param name="idMedidor">Medidor a consultar.</param>
+    /// <param name="idVar5M">Variable de energía; si se omite, devuelve todas las de energía.</param>
+    /// <param name="fechaInicio">Primer día del rango (AAAA-MM-DD).</param>
+    /// <param name="fechaFin">Último día del rango (AAAA-MM-DD).</param>
+    [HttpGet("energia-dia")]
+    public Task<IActionResult> GetEnergiaDia(int idMedidor, int? idVar5M, DateOnly fechaInicio, DateOnly fechaFin) =>
+        GetEnergiaTotales(idMedidor, idVar5M, fechaInicio, fechaFin, PeriodoEnergia.Dia);
+
+    /// <summary>
+    /// GET /api/Medicion5M/energia-semana
+    /// Total de energía por semana ISO (lunes a domingo), solo variables de energía y fase A.
+    /// Solo suma los días de cada semana que caen dentro del rango.
+    /// </summary>
+    /// <param name="idMedidor">Medidor a consultar.</param>
+    /// <param name="idVar5M">Variable de energía; si se omite, devuelve todas las de energía.</param>
+    /// <param name="fechaInicio">Primer día del rango (AAAA-MM-DD).</param>
+    /// <param name="fechaFin">Último día del rango (AAAA-MM-DD).</param>
+    [HttpGet("energia-semana")]
+    public Task<IActionResult> GetEnergiaSemana(int idMedidor, int? idVar5M, DateOnly fechaInicio, DateOnly fechaFin) =>
+        GetEnergiaTotales(idMedidor, idVar5M, fechaInicio, fechaFin, PeriodoEnergia.Semana);
+
+    /// <summary>
+    /// GET /api/Medicion5M/energia-mes
+    /// Total de energía por mes, solo variables de energía y fase A.
+    /// Solo suma los días de cada mes que caen dentro del rango.
+    /// </summary>
+    /// <param name="idMedidor">Medidor a consultar.</param>
+    /// <param name="idVar5M">Variable de energía; si se omite, devuelve todas las de energía.</param>
+    /// <param name="fechaInicio">Primer día del rango (AAAA-MM-DD).</param>
+    /// <param name="fechaFin">Último día del rango (AAAA-MM-DD).</param>
+    [HttpGet("energia-mes")]
+    public Task<IActionResult> GetEnergiaMes(int idMedidor, int? idVar5M, DateOnly fechaInicio, DateOnly fechaFin) =>
+        GetEnergiaTotales(idMedidor, idVar5M, fechaInicio, fechaFin, PeriodoEnergia.Mes);
+
+    /// <summary>
+    /// GET /api/Medicion5M/energia-anio
+    /// Total de energía por año, solo variables de energía y fase A.
+    /// Solo suma los días de cada año que caen dentro del rango.
+    /// </summary>
+    /// <param name="idMedidor">Medidor a consultar.</param>
+    /// <param name="idVar5M">Variable de energía; si se omite, devuelve todas las de energía.</param>
+    /// <param name="fechaInicio">Primer día del rango (AAAA-MM-DD).</param>
+    /// <param name="fechaFin">Último día del rango (AAAA-MM-DD).</param>
+    [HttpGet("energia-anio")]
+    public Task<IActionResult> GetEnergiaAnio(int idMedidor, int? idVar5M, DateOnly fechaInicio, DateOnly fechaFin) =>
+        GetEnergiaTotales(idMedidor, idVar5M, fechaInicio, fechaFin, PeriodoEnergia.Anio);
+
+    /// <summary>Validación y consulta común de los totales de energía por periodo (sin fase: siempre es la A).</summary>
+    private async Task<IActionResult> GetEnergiaTotales(int idMedidor, int? idVar5M, DateOnly fechaInicio, DateOnly fechaFin, PeriodoEnergia periodo)
+    {
+        // Si no se filtra por variable se pasa 1 solo para que la validación común acepte el idVar5M.
+        var error = ValidateQuery(idMedidor, idVar5M ?? 1, fechaInicio, fechaFin, Medicion5MService.FaseEnergia);
+        if (error is not null) return error;
+        return Results(await _service.GetEnergiaTotalesAsync(idMedidor, idVar5M, fechaInicio, fechaFin, periodo));
+    }
+
     /// <summary>Edita una lectura individual; solo administrador con contraseña actual válida.</summary>
     /// <summary>Valida filtros comunes para fases y rangos de fecha antes de consultar una vista.</summary>
     private IActionResult? ValidateQuery(int idMedidor, int idVar5M, DateOnly inicio, DateOnly fin, short fase)
