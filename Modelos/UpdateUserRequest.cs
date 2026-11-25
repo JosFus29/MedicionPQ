@@ -11,7 +11,11 @@ public class UpdateUserRequest
     [Required, EmailAddress]
     public string Correo { get; set; } = string.Empty;
 
-    /// <summary>Nombre que se muestra para la cuenta.</summary>
+    /// <summary>
+    /// Nombre de usuario: se muestra en el sistema y también sirve para iniciar sesión. Es único (sin importar
+    /// mayúsculas ni espacios de más), puede llevar espacios, tiene de 3 a 50 caracteres y no puede llevar "@"
+    /// (ver <see cref="NombreUsuarioPolicy"/>).
+    /// </summary>
     [Required]
     public string NombreUsuario { get; set; } = string.Empty;
 

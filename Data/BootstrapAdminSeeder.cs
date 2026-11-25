@@ -54,6 +54,11 @@ public static class BootstrapAdminSeeder
         if (await db.Usuarios.AnyAsync(user => user.correo == email))
             throw new InvalidOperationException("El correo configurado para el administrador inicial ya pertenece a otra cuenta.");
 
+        // El nombre de usuario no se puede repetir: si "SuperAdministrador" ya existe se usa "SuperAdministrador 2", etc.
+        var nombreUsuario = "SuperAdministrador";
+        for (var numero = 2; await db.Usuarios.AnyAsync(user => user.nombreUsuario.ToLower() == nombreUsuario.ToLower()); numero++)
+            nombreUsuario = $"SuperAdministrador {numero}";
+
         var passwordService = services.GetRequiredService<IPasswordService>();
         db.Usuarios.Add(new Usuario
         {
@@ -61,7 +66,7 @@ public static class BootstrapAdminSeeder
             contrasena = passwordService.HashPassword(configuredPassword),
             tiempoSesion = 60,
             edo = true,
-            nombreUsuario = "SuperAdministrador",
+            nombreUsuario = nombreUsuario,
             rol = Usuario.TipoRol.SuperAdministrador
         });
 

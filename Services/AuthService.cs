@@ -30,11 +30,9 @@ public class AuthService : IAuthService
     /// <param name="correo">Correo electrónico de la cuenta.</param>
     /// <param name="contrasena">Contraseña que se verifica contra el hash guardado.</param>
     /// <returns>Resultado de autenticación y token emitido cuando las credenciales son válidas.</returns>
-    public async Task<(bool Exito, string Mensaje, string Token, DateTime? ExpiresAtUtc, int ExpiresIn, Usuario? UsuarioInfo)> ValidarLoginAsync(string correo, string contrasena)
+    public async Task<(bool Exito, string Mensaje, string Token, DateTime? ExpiresAtUtc, int ExpiresIn, Usuario? UsuarioInfo)> ValidarLoginAsync(string correoOUsuario, string contrasena)
     {
-        var correoNormalizado = correo.Trim().ToLowerInvariant();
-        var usuarioEnDb = await _context.Usuarios.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.correo == correoNormalizado);
+        var usuarioEnDb = await BuscarCuentaAsync(correoOUsuario);
         if (usuarioEnDb is null) return (false, "Credenciales incorrectas.", string.Empty, null, 0, null);
 
         var passwordValida = _passwordService.VerifyPassword(usuarioEnDb.contrasena, contrasena);
@@ -45,6 +43,32 @@ public class AuthService : IAuthService
 
         var token = _tokenService.GenerarToken(usuarioEnDb);
         return (true, "Inicio de sesión exitoso", token.Token, token.ExpiresAtUtc, token.ExpiresIn, usuarioEnDb);
+    }
+
+    /// <summary>
+    /// Busca la cuenta con la que se quiere iniciar sesión: por correo si el texto lleva "@" y, si no, por nombre de usuario
+    /// (sin importar mayúsculas ni espacios de más). Si el nombre estuviera repetido en una base sin el índice único,
+    /// no se elige ninguna cuenta, para no entrar a la equivocada.
+    /// </summary>
+    /// <param name="correoOUsuario">Correo o nombre de usuario escrito en el login.</param>
+    /// <returns>La cuenta encontrada o null.</returns>
+    private async Task<Usuario?> BuscarCuentaAsync(string? correoOUsuario)
+    {
+        var entrada = correoOUsuario?.Trim() ?? string.Empty;
+        if (entrada.Length == 0) return null;
+
+        if (entrada.Contains('@'))
+        {
+            var correoNormalizado = entrada.ToLowerInvariant();
+            return await _context.Usuarios.AsNoTracking().FirstOrDefaultAsync(u => u.correo == correoNormalizado);
+        }
+
+        var clave = NombreUsuarioPolicy.Clave(entrada);
+        var coincidencias = await _context.Usuarios.AsNoTracking()
+            .Where(u => u.nombreUsuario.ToLower() == clave)
+            .Take(2)
+            .ToListAsync();
+        return coincidencias.Count == 1 ? coincidencias[0] : null;
     }
 
     /// <summary>Vuelve a leer la cuenta para impedir renovar sesiones de usuarios inactivos o eliminados.</summary>

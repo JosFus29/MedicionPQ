@@ -51,7 +51,7 @@ La serialización JSON usa camel case para propiedades PascalCase (por ejemplo `
 
 | Método y ruta | Acceso | Descripción |
 | --- | --- | --- |
-| `POST /api/Auth/login` | Público | Valida correo y contraseña; devuelve JWT e ID de usuario. |
+| `POST /api/Auth/login` | Público | Valida correo **o nombre de usuario** y contraseña; devuelve JWT e ID de usuario. |
 | `POST /api/Auth/register` | Público | Registra una cuenta nueva con rol Usuario, inactiva hasta que un administrador la apruebe; no acepta roles desde el cliente. Devuelve `201`. |
 | `POST /api/Auth/renew` | Usuario autenticado | Renueva el JWT cuando quedan 60 segundos o menos. |
 | `POST /api/Contrasena/solicitar-codigo` | Público | Envía un código de verificación de 6 dígitos al correo de una cuenta activa (cualquier rol). |
@@ -313,6 +313,8 @@ El token incluye identificador, correo, nombre y rol. Expira según `tiempoSesio
 `PUT /api/Users/{id}` recibe `correo`, `nombreUsuario`, `rol` (5 SuperAdministrador, 1 Administrador, 2 Usuario), `edo` (`true` activo) y `tiempoSesion` (1 a 1440 minutos). Administrador recibe `403` si intenta asignar rol 5 o editar cualquier cuenta que ya tenga rol SuperAdministrador; solo SuperAdministrador puede editar esas cuentas. El frontend debería ocultar el botón Editar en las filas de SuperAdministrador, aunque la API aplica la restricción por sí misma.
 
 Cualquier persona puede registrarse mediante `POST /api/Auth/register`, enviando `correo`, `contrasena` y `nombreUsuario`. La contraseña nueva debe tener de 8 a 16 caracteres, una mayúscula, una minúscula, un número y un carácter especial, sin espacios; letras acentuadas cuentan como letras. La API asigna siempre el rol `Usuario`; los correos duplicados devuelven `409` y los datos inválidos `400`. El login no aplica estas reglas a contraseñas ya guardadas. La cuenta registrada queda **inactiva** (`edo = false`): no puede iniciar sesión hasta que un Administrador o SuperAdministrador la apruebe activándola con `PUT /api/Users/{id}` y `edo: true`. Mientras tanto, el login responde `401` con el mensaje de cuenta pendiente de aprobación o desactivada.
+
+El `nombreUsuario` también sirve para iniciar sesión, así que es único: no se distinguen mayúsculas ni espacios de más ("Ana López" y "ana  lópez" son el mismo). Puede llevar espacios, tiene de 3 a 50 caracteres y no puede llevar `@`, para que el login sepa si se escribió un correo o un nombre. La API lo guarda sin espacios al inicio o al final y con un solo espacio entre palabras. Un nombre repetido en el registro responde `409`; al editar una cuenta con el nombre de otra, `400`. `POST /api/Auth/login` recibe `{ "usuario": "<correo o nombre de usuario>", "contrasena": "..." }`; por compatibilidad también acepta el campo `correo`, que igual puede llevar un nombre de usuario. Para que la base también impida repetidos hay que correr `Database/Scripts/20261125_NombreUsuarioUnico.sql`: limpia los espacios de los nombres, muestra los repetidos si los hay (y se detiene sin cambiar nada) y crea el índice único `UX_Usuario_nombreUsuario`.
 
 Cambio de contraseña con código de verificación (igual para Usuario, Administrador y SuperAdministrador; es el único camino para cambiar una contraseña):
 
