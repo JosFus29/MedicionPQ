@@ -52,7 +52,9 @@ public static class AgrupadorEnergia
                     foreach (var fila in filas)
                     {
                         registros += fila.registros;
-                        if (fila.total is { } valor) total = (total ?? 0) + valor;
+                        // Un día sin lecturas con valor no suma: SQL Server lo devuelve como 0 (ver EnergiaDiaria),
+                        // pero no es 0 kWh, es "sin datos". Así el periodo queda en null si ninguno de sus días tiene datos.
+                        if (fila.registros > 0 && fila.total is { } valor) total = (total ?? 0) + valor;
                     }
                 }
 

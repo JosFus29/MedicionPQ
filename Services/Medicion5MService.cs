@@ -87,8 +87,8 @@ public class Medicion5MService : IMedicion5MService
                 g.Key.idVar5M,
                 g.Key.simbolo,
                 g.Key.fecha,
-                g.Sum(x => x.valor),
-                g.Count(x => x.valor != null)))
+                g.Sum(x => x.valor),            // llega 0 (no null) si todas las lecturas del día están en NULL
+                g.Count(x => x.valor != null))) // por eso el agrupador decide con este conteo si hay datos
             .ToListAsync();
 
         return AgrupadorEnergia.Agrupar(idMedidor, dias, inicio, fin, periodo);
