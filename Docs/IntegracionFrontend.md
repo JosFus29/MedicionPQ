@@ -237,7 +237,7 @@ La DLL decide qué solicitar a partir del `Tag`, que debe ser `ARM_VA`, `ARM_VB`
 }
 ```
 
-La API carga de `PuntosIO` **solo** los puntos activos (`Edo = 1`) con `IdGF = 1` y estos 15 `Tag`, y los pide a la DLL con `SolInstT` en una sola conexión:
+La API pide a la DLL con `SolInstT`, en una sola conexión, **todos** los instantáneos activos (`Edo = 1`, `IdGF = 1`), igual que `/api/ConexionMedidor/instantaneos`, y de la respuesta usa solo estos 15 `Tag`. Se pide el grupo completo porque la DLL reparte los valores en orden y no por dirección: si se le piden puntos sueltos con huecos entre sus direcciones, los valores se corren de lugar.
 
 | Fase | Potencia activa | Potencia reactiva | Factor de potencia | Voltaje | Corriente | Voltaje de referencia (horario) |
 |---|---|---|---|---|---|---|

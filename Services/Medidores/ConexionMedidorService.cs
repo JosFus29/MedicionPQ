@@ -172,19 +172,33 @@ public class ConexionMedidorService : IConexionMedidorService
     /// El valor del enum <see cref="GrupoLectura"/> es el IdGF de IO_GrupoFuncional.
     /// </summary>
     public Task<LecturaGrupoMedidorResult> SolicitarGrupoAsync(ConexionMedidorRequest request, GrupoLectura grupo) =>
-        LeerGrupoAsync(request, grupo, tagsRequeridos: null);
+        LeerGrupoAsync(request, grupo, tagsQueDebenExistir: null);
 
     /// <summary>
-    /// Lee en vivo, con SolInstT, solo los 15 puntos de instantáneos (IdGF = 1) que usa el diagrama fasorial:
-    /// PA, PRA, FPA, VA, IA y sus equivalentes de las fases B y C. Con P, PR y FP calcula el fasor de corriente
-    /// de cada fase; V e I solo se devuelven para mostrarlos.
+    /// Lee en vivo, con SolInstT, el grupo completo de instantáneos (IdGF = 1), igual que <see cref="SolicitarGrupoAsync"/>,
+    /// y de la respuesta toma solo los 15 puntos que usa el diagrama fasorial: PA, PRA, FPA, VA, IA y sus equivalentes
+    /// de las fases B y C. Con P, PR y FP calcula el fasor de corriente de cada fase; V e I solo se devuelven para mostrarlos.
+    /// <para>
+    /// Se pide el grupo completo y no solo los 15 puntos porque la DLL lee un bloque seguido de registros y reparte
+    /// los valores en orden entre los puntos que recibe, sin respetar la dirección de cada uno. Si la lista tiene
+    /// huecos (por ejemplo PAA, PAB y PAC, que no se usan), los valores se corren de lugar: PRA recibía la potencia
+    /// aparente de A, PB la reactiva de A, etc.
+    /// </para>
     /// </summary>
     public async Task<LecturaFasoresResult> SolicitarFasoresAsync(ConexionMedidorRequest request)
     {
+        // Mismo flujo que SolicitarGrupoAsync (todos los instantáneos); además revisa antes de llamar a la DLL
+        // que los 15 Tags de los fasores existan, estén activos y no estén repetidos.
         var lectura = await LeerGrupoAsync(request, GrupoLectura.Instantaneos, CalculadoraFasores.TagsRequeridos);
 
+        // De todo el grupo solo se usan los 15 Tags de los fasores.
+        var tagsFasores = new HashSet<string>(CalculadoraFasores.TagsRequeridos, StringComparer.OrdinalIgnoreCase);
+        var puntosFasores = lectura.Puntos
+            .Where(punto => tagsFasores.Contains(punto.Tag.Trim()))
+            .ToList();
+
         // Valor numérico de cada Tag; null si la DLL no escribió un valor o no es numérico.
-        var valores = lectura.Puntos
+        var valores = puntosFasores
             .GroupBy(punto => punto.Tag.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => ConvertirADouble(g.First().Valor), StringComparer.OrdinalIgnoreCase);
 
@@ -202,7 +216,7 @@ public class ConexionMedidorService : IConexionMedidorService
         _logger.LogInformation(
             "Valores leídos para fasores: IdMedidor={IdMedidor}, Valores={Valores}",
             lectura.IdMedidor,
-            string.Join(", ", lectura.Puntos.Select(punto => $"{punto.Tag}={punto.Valor}")));
+            string.Join(", ", puntosFasores.Select(punto => $"{punto.Tag}={punto.Valor}")));
 
         var tagsSinValor = CalculadoraFasores.TagsRequeridos
             .Where(tag => valores.GetValueOrDefault(tag) is null)
@@ -236,37 +250,30 @@ public class ConexionMedidorService : IConexionMedidorService
     }
 
     /// <summary>
-    /// Carga de PuntosIO los puntos activos del grupo y los solicita a la DLL. Si se indican
-    /// <paramref name="tagsRequeridos"/>, solo se leen esos Tags y deben existir todos (activos y sin repetir).
+    /// Carga de PuntosIO todos los puntos activos del grupo y los solicita a la DLL. Siempre se pide el grupo
+    /// completo: la DLL reparte los valores en orden y no por dirección, así que pedir puntos sueltos con huecos
+    /// entre sus direcciones corre los valores de lugar. Si se indican <paramref name="tagsQueDebenExistir"/>,
+    /// antes de llamar a la DLL se revisa que esos Tags estén en el grupo (activos y sin repetir).
     /// </summary>
     private async Task<LecturaGrupoMedidorResult> LeerGrupoAsync(
         ConexionMedidorRequest request,
         GrupoLectura grupo,
-        IReadOnlyList<string>? tagsRequeridos)
+        IReadOnlyList<string>? tagsQueDebenExistir)
     {
         var idGF = (int)grupo;
         var descripcion = grupo.Descripcion();
         var (idMedidor, medidorComs) = await ObtenerMedidorComsAsync(request.IdMedidor);
 
         _logger.LogInformation(
-            "Buscando puntos de {Grupo} en PuntosIO: IdMedidor={IdMedidor}, IdGF={IdGF}, Tags={Tags}",
+            "Buscando puntos de {Grupo} en PuntosIO: IdMedidor={IdMedidor}, IdGF={IdGF}",
             descripcion,
             idMedidor,
-            idGF,
-            tagsRequeridos is null ? "(todos)" : string.Join(",", tagsRequeridos));
+            idGF);
 
         // Solo se piden los puntos activos (Edo = 1) del grupo funcional.
-        var consulta = _db.PuntosIO
+        var puntosBd = await _db.PuntosIO
             .AsNoTracking()
-            .Where(punto => punto.IdGF == idGF && punto.Edo);
-
-        if (tagsRequeridos is not null)
-        {
-            var tags = tagsRequeridos.ToArray();
-            consulta = consulta.Where(punto => tags.Contains(punto.Tag));
-        }
-
-        var puntosBd = await consulta
+            .Where(punto => punto.IdGF == idGF && punto.Edo)
             .OrderBy(punto => punto.DirCCEC)
             .Select(punto => new
             {
@@ -287,12 +294,13 @@ public class ConexionMedidorService : IConexionMedidorService
             throw new InvalidOperationException($"No hay puntos activos configurados con IdGF = {idGF} para solicitar {descripcion}.");
         }
 
-        if (tagsRequeridos is not null)
+        if (tagsQueDebenExistir is not null)
         {
-            var faltantes = tagsRequeridos
+            var faltantes = tagsQueDebenExistir
                 .Where(tag => !puntosBd.Any(punto => string.Equals(punto.Tag.Trim(), tag, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
             var repetidos = puntosBd
+                .Where(punto => tagsQueDebenExistir.Contains(punto.Tag.Trim(), StringComparer.OrdinalIgnoreCase))
                 .GroupBy(punto => punto.Tag.Trim(), StringComparer.OrdinalIgnoreCase)
                 .Where(g => g.Count() > 1)
                 .Select(g => g.Key)
