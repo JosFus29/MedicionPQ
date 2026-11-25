@@ -58,9 +58,9 @@ public class AuthController : ControllerBase
 
     /// <summary>
     /// Endpoint POST /api/Auth/login
-    /// Recibe correo y contraseña, valida mediante IAuthService y devuelve token y datos mínimos del usuario.
+    /// Recibe el correo o el nombre de usuario y la contraseña, valida mediante IAuthService y devuelve token y datos mínimos del usuario.
     /// </summary>
-    /// <param name="request">LoginRequest con Correo y Contrasena.</param>
+    /// <param name="request">LoginRequest con Usuario (correo o nombre de usuario) y Contrasena; Correo se acepta por compatibilidad.</param>
     /// <returns>LoginResponse con token y datos públicos del usuario.</returns>
     [HttpPost("login")]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
@@ -68,12 +68,13 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        var resultado = await _authService.ValidarLoginAsync(request.Correo, request.Contrasena);
+        var cuenta = request.ObtenerCuenta();
+        var resultado = await _authService.ValidarLoginAsync(cuenta, request.Contrasena);
 
         if (!resultado.Exito)
         {
             // Registra el correo del intento fallido (nunca la contraseña) para detectar accesos sospechosos.
-            _logger.LogWarning("Inicio de sesión fallido para {Correo}: {Motivo}", request.Correo, resultado.Mensaje);
+            _logger.LogWarning("Inicio de sesión fallido para {Cuenta}: {Motivo}", cuenta, resultado.Mensaje);
             return Unauthorized(new { mensaje = resultado.Mensaje });
         }
 

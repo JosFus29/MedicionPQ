@@ -87,14 +87,20 @@ public class UserService : IUserService
             return (false, "Datos incompletos.", null);
 
         correo = correo.Trim().ToLowerInvariant();
-        nombreUsuario = nombreUsuario.Trim();
+        nombreUsuario = NombreUsuarioPolicy.Normalizar(nombreUsuario);
         var emailAttr = new System.ComponentModel.DataAnnotations.EmailAddressAttribute();
         if (!emailAttr.IsValid(correo)) return (false, "Correo inválido.", null);
+        if (NombreUsuarioPolicy.Validar(nombreUsuario) is { } errorNombre) return (false, errorNombre, null);
         if (!PasswordPolicy.IsValid(contrasena)) return (false, PasswordPolicy.ErrorMessage, null);
         if (!Enum.IsDefined(rol)) return (false, "Rol inválido.", null);
 
         var existente = await _context.Usuarios.AnyAsync(u => u.correo == correo);
         if (existente) return (false, "Ya existe un usuario con ese correo.", null);
+
+        // El nombre de usuario también sirve para iniciar sesión: no se puede repetir (sin importar mayúsculas).
+        var claveNombre = NombreUsuarioPolicy.Clave(nombreUsuario);
+        if (await _context.Usuarios.AnyAsync(u => u.nombreUsuario.ToLower() == claveNombre))
+            return (false, NombreUsuarioPolicy.MensajeDuplicadoRegistro, null);
 
         var nuevo = new Usuario
         {
@@ -138,16 +144,24 @@ public class UserService : IUserService
             return (false, true, "Solo un SuperAdministrador puede editar cuentas de SuperAdministrador o asignar ese rol.", null);
 
         var correoNormalizado = request.Correo?.Trim().ToLowerInvariant();
-        var nombreNormalizado = request.NombreUsuario?.Trim();
+        var nombreNormalizado = NombreUsuarioPolicy.Normalizar(request.NombreUsuario);
         var emailAttr = new System.ComponentModel.DataAnnotations.EmailAddressAttribute();
         if (string.IsNullOrWhiteSpace(correoNormalizado) || !emailAttr.IsValid(correoNormalizado))
             return (false, false, "Correo inválido.", null);
-        if (string.IsNullOrWhiteSpace(nombreNormalizado)) return (false, false, "Nombre de usuario requerido.", null);
+        // Las reglas del nombre solo se aplican si cambia, para poder editar otros datos de cuentas
+        // antiguas cuyo nombre no las cumpla.
+        var claveNombre = NombreUsuarioPolicy.Clave(nombreNormalizado);
+        var cambiaNombre = claveNombre != NombreUsuarioPolicy.Clave(usuario.nombreUsuario);
+        if (string.IsNullOrEmpty(nombreNormalizado)) return (false, false, "Nombre de usuario requerido.", null);
+        if (cambiaNombre && NombreUsuarioPolicy.Validar(nombreNormalizado) is { } errorNombre) return (false, false, errorNombre, null);
         if (!Enum.IsDefined(request.Rol)) return (false, false, "Rol inválido.", null);
         if (request.TiempoSesion is < 1 or > 1440) return (false, false, "El tiempo de sesión debe estar entre 1 y 1440 minutos.", null);
 
         var otro = await _context.Usuarios.FirstOrDefaultAsync(u => u.correo == correoNormalizado && u.idUsuario != id);
         if (otro != null) return (false, false, "El correo ya está en uso por otro usuario.", null);
+
+        if (cambiaNombre && await _context.Usuarios.AnyAsync(u => u.nombreUsuario.ToLower() == claveNombre && u.idUsuario != id))
+            return (false, false, NombreUsuarioPolicy.MensajeDuplicadoEdicion, null);
 
         usuario.correo = correoNormalizado;
         usuario.nombreUsuario = nombreNormalizado;
