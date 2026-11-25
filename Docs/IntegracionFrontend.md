@@ -287,6 +287,8 @@ Casos especiales:
       "nombreFase": "A",
       "voltaje": 120.5,
       "corriente": 4.23,
+      "potenciaActiva": -193.909,
+      "potenciaReactiva": -140.628,
       "factorPotencia": -0.809,
       "cuadrante": 3,
       "tipo": "Generación inductiva",
@@ -301,6 +303,6 @@ Casos especiales:
 }
 ```
 
-`fases` siempre trae A, B y C en ese orden. Los ángulos no se redondean; el frontend decide cuántos decimales mostrar. Todos los ángulos del diagrama (`anguloVoltaje`, `anguloCorriente` y `anguloCorriente180`) se miden desde el eje horizontal positivo (0° a la derecha) y crecen en **sentido horario**: VA a la derecha, VB abajo a la izquierda (120°) y VC arriba a la izquierda (240°). La flecha de voltaje va en `anguloVoltaje` con largo `voltaje`, y la de corriente en `anguloCorriente` con largo `corriente`. En SVG o canvas, donde el eje Y apunta hacia abajo, se dibujan directo sin invertir Y: `x = largo * cos(ángulo)`, `y = largo * sin(ángulo)` (ángulo en radianes).
+`fases` siempre trae A, B y C en ese orden. `potenciaActiva` (PA, PB, PC) y `potenciaReactiva` (PRA, PRB, PRC) van tal como las entrega la DLL, sin escalar ni redondear, y en `null` si no llegaron. Los ángulos no se redondean; el frontend decide cuántos decimales mostrar. Todos los ángulos del diagrama (`anguloVoltaje`, `anguloCorriente` y `anguloCorriente180`) se miden desde el eje horizontal positivo (0° a la derecha) y crecen en **sentido horario**: VA a la derecha, VB abajo a la izquierda (120°) y VC arriba a la izquierda (240°). La flecha de voltaje va en `anguloVoltaje` con largo `voltaje`, y la de corriente en `anguloCorriente` con largo `corriente`. En SVG o canvas, donde el eje Y apunta hacia abajo, se dibujan directo sin invertir Y: `x = largo * cos(ángulo)`, `y = largo * sin(ángulo)` (ángulo en radianes).
 
 Responde `200` si conectó y llegaron los 15 valores, `404` si el medidor no existe y `503` en cualquier otro caso (no conectó, la DLL no confirmó la lectura, algún valor no llegó, faltan puntos en `PuntosIO` o el puerto estuvo ocupado más de 30 s). En un `503` el cuerpo trae el mismo formato, con `lecturaExitosa: false`, el `mensaje` a mostrar y las tres `fases` con `null` en lo que no llegó (si no conectó, todos los valores vienen en `null`). Solo si el `503` ocurre antes de intentar la lectura (faltan puntos en `PuntosIO`, direcciones inválidas o el puerto estaba ocupado) `fases` viene vacío.

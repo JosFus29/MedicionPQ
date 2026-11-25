@@ -18,6 +18,7 @@ namespace MedicionPQ.Services.Medidores;
 /// I = (V - theta_lag) mod 360); aquí se usa la misma fórmula expresada en sentido horario,
 /// así que cada vector queda exactamente en la misma posición del diagrama.
 /// El voltaje (V) y la corriente (I) de cada fase no intervienen en el cálculo: solo se devuelven para mostrarlos.
+/// P y PR también se devuelven tal como llegaron, para mostrarlos junto al fasor.
 /// No usa base de datos ni la DLL, para poder probarse por separado.
 /// </summary>
 public static class CalculadoraFasores
@@ -42,7 +43,8 @@ public static class CalculadoraFasores
     /// <summary>
     /// Calcula el fasor de una fase. Todos los valores se usan tal como llegan de la DLL (el FP ya viene entre -1 y 1;
     /// solo se limita a ese rango por si llega con ruido). Si falta P, PR o FP, o P y PR son 0 (sin carga), los campos calculados quedan en null;
-    /// <paramref name="voltaje"/> y <paramref name="corriente"/> se devuelven siempre tal como llegaron.
+    /// <paramref name="voltaje"/>, <paramref name="corriente"/>, <paramref name="potenciaActiva"/> y <paramref name="potenciaReactiva"/>
+    /// se devuelven siempre tal como llegaron (null si no llegaron).
     /// Cuando FP o PR valen exactamente 0 se usa el cuadrante vecino: FP = 0 cuenta como positivo y PR = 0 como positiva.
     /// </summary>
     public static FasorFaseResult Calcular(
@@ -67,6 +69,8 @@ public static class CalculadoraFasores
                 NombreFase = nombreFase,
                 Voltaje = voltaje,
                 Corriente = corriente,
+                PotenciaActiva = potenciaActiva,
+                PotenciaReactiva = potenciaReactiva,
                 FactorPotencia = factorPotencia,
                 Tipo = "Sin lectura",
                 AnguloVoltaje = definicion.AnguloVoltaje
@@ -81,6 +85,8 @@ public static class CalculadoraFasores
                 NombreFase = nombreFase,
                 Voltaje = voltaje,
                 Corriente = corriente,
+                PotenciaActiva = p,
+                PotenciaReactiva = pr,
                 FactorPotencia = fp,
                 Tipo = "Sin carga",
                 AnguloVoltaje = definicion.AnguloVoltaje,
@@ -116,6 +122,8 @@ public static class CalculadoraFasores
             NombreFase = nombreFase,
             Voltaje = voltaje,
             Corriente = corriente,
+            PotenciaActiva = p,
+            PotenciaReactiva = pr,
             FactorPotencia = fp,
             Cuadrante = cuadrante,
             Tipo = tipo,

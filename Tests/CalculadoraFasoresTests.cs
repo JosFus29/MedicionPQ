@@ -106,6 +106,20 @@ public class CalculadoraFasoresTests
     }
 
     [Fact]
+    public void PotenciaActivaYReactiva_SeDevuelvenTalComoLlegan()
+    {
+        var calculada = CalculadoraFasores.Calcular(1, -194.099, -140.343, -0.81, 120, 2);
+        var sinReactiva = CalculadoraFasores.Calcular(1, -194.099, null, -0.81, 120, 2);
+
+        Assert.Equal(-194.099, calculada.PotenciaActiva);
+        Assert.Equal(-140.343, calculada.PotenciaReactiva);
+        Assert.Equal(3, calculada.Cuadrante);
+        Assert.Equal("Sin lectura", sinReactiva.Tipo);
+        Assert.Equal(-194.099, sinReactiva.PotenciaActiva);
+        Assert.Null(sinReactiva.PotenciaReactiva);
+    }
+
+    [Fact]
     public void SinCarga_AngulosNull_PeroVoltajeYCorrienteConValor()
     {
         var r = CalculadoraFasores.Calcular(1, 0, 0, 1, 120.5, 0);
